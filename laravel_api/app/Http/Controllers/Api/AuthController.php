@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -11,6 +12,13 @@ use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
+    public function user(Request $request): JsonResponse
+    {
+        return response()->json([
+            'data' => $request->user(),
+        ]);
+    }
+    
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
