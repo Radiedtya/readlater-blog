@@ -7,6 +7,7 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class PublicApiController extends Controller
 {
@@ -15,18 +16,28 @@ class PublicApiController extends Controller
     /** GET /api/public/posts?limit=&skip=&q= */
     public function index(Request $request): JsonResponse
     {
+        $limit = (int) $request->input('limit', 20);
+        $skip  = (int) $request->input('skip', 0);
+        $hasQuery = $request->filled('q');
+
+        // Dummyjson: search pakai endpoint /posts/search?q=, bukan /posts?q=
+        $url = $hasQuery ? self::BASE . '/search' : self::BASE;
+
         $params = [
-            'limit' => (int) $request->input('limit', 20),
-            'skip'  => (int) $request->input('skip', 0),
+            'limit' => $limit,
+            'skip'  => $skip,
         ];
-        
-        if ($request->filled('q')) {
+        if ($hasQuery) {
             $params['q'] = $request->string('q')->toString();
         }
 
+        debug_log: // (opsional, hapus kalau tidak perlu)
+        Log::debug('PublicAPI → GET ' . $url, $params);
+
         try {
-            $res = Http::timeout(10)->get(self::BASE, $params)->throw();
+            $res = Http::timeout(10)->get($url, $params)->throw();
         } catch (\Throwable $e) {
+            Log::warning('PublicAPI error: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Gagal mengambil data dari public API',
             ], 502);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -5,6 +7,7 @@ import '../models/bookmark.dart';
 import '../models/topic.dart';
 import '../routes/app_routing.dart';
 import '../services/crud_service.dart';
+import '../widgets/search_field.dart';
 
 class BookmarksScreen extends StatefulWidget {
   const BookmarksScreen({super.key});
@@ -14,40 +17,83 @@ class BookmarksScreen extends StatefulWidget {
 }
 
 class _BookmarksScreenState extends State<BookmarksScreen> {
-  late Future<_BookmarksData> _future;
-  int _refreshCounter = 0;
+  final _searchController = TextEditingController();
+  Timer? _debounce;
+
+  List<Topic> _topics = [];
+  List<Bookmark>? _bookmarks;
+  bool _loading = true;
+  String? _error;
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _load();
   }
 
-  Future<_BookmarksData> _load() async {
-    final results = await Future.wait([
-      CrudService.getTopics(),
-      CrudService.getBookmarks(),
-    ]);
-    return _BookmarksData(
-      topics: results[0] as List<Topic>,
-      bookmarks: results[1] as List<Bookmark>,
-    );
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
   }
 
-  /// Selalu berhasil (tidak throw ke pemanggil).
-  /// Error akan ditampilkan oleh FutureBuilder.
-  Future<void> _refresh() async {
+  Future<void> _load() async {
     if (!mounted) return;
-    final future = _load();
     setState(() {
-      _future = future;
-      _refreshCounter++;
+      _loading = true;
+      _error = null;
     });
     try {
-      await future;
+      final results = await Future.wait([
+        CrudService.getTopics(),
+        CrudService.getBookmarks(q: _query.isEmpty ? null : _query),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _topics = results[0] as List<Topic>;
+        _bookmarks = results[1] as List<Bookmark>;
+        _loading = false;
+      });
     } catch (e) {
-      debugPrint('⚠ Refresh bookmark gagal (akan ditampilkan di UI): $e');
+      debugPrint('⚠ Bookmarks load gagal: $e');
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
     }
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    final trimmed = value.trim();
+    if (trimmed == _query) {
+      setState(() {});
+      return;
+    }
+    setState(() => _query = trimmed);
+    _debounce = Timer(const Duration(milliseconds: 300), _load);
+  }
+
+  void _onSearchSubmitted(String value) {
+    _debounce?.cancel();
+    final trimmed = value.trim();
+    if (trimmed == _query) return;
+    setState(() => _query = trimmed);
+    _load();
+  }
+
+  void _clearSearch() {
+    _debounce?.cancel();
+    _searchController.clear();
+    if (_query.isEmpty) {
+      setState(() {});
+      return;
+    }
+    setState(() => _query = '');
+    _load();
   }
 
   Future<void> _openForm({Bookmark? bookmark, int? preselectedTopicId}) async {
@@ -60,7 +106,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     );
     debugPrint('← Form ditutup, result=$result');
     if (!mounted) return;
-    await _refresh();
+    await _load();
   }
 
   Future<void> _delete(Bookmark bookmark) async {
@@ -84,26 +130,23 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
 
     if (confirmed != true || !mounted) return;
 
-    // 1) Hapus di server
     try {
       await CrudService.deleteBookmark(bookmark.id);
-      debugPrint('✓ Bookmark #${bookmark.id} dihapus di server');
+      debugPrint('✓ Bookmark #${bookmark.id} dihapus');
     } catch (e) {
-      debugPrint('✗ Gagal hapus di server: $e');
+      debugPrint('✗ Gagal hapus: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal menghapus: $e')),
       );
-      return; // stop, jangan refresh
+      return;
     }
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('"${bookmark.title}" dihapus')),
     );
-
-    // 2) Refresh list (tidak akan throw karena _refresh handle internal)
-    await _refresh();
+    await _load();
   }
 
   @override
@@ -112,7 +155,8 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: const Icon(Icons.add),
       ),
       body: SafeArea(
@@ -132,64 +176,151 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  SearchField(
+                    controller: _searchController,
+                    hintText: 'Cari bookmark',
+                    onChanged: _onSearchChanged,
+                    onSubmitted: _onSearchSubmitted,
+                    onClear: _searchController.text.isEmpty
+                        ? null
+                        : _clearSearch,
+                  ),
                 ],
               ),
             ),
-            Expanded(
-              child: FutureBuilder<_BookmarksData>(
-                key: ValueKey(_refreshCounter),
-                future: _future,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return _ErrorView(
-                      message: snapshot.error.toString(),
-                      onRetry: _refresh,
-                    );
-                  }
-                  final data = snapshot.data!;
-                  if (data.bookmarks.isEmpty) {
-                    return _EmptyState(
-                      onAdd: () => _openForm(
-                        preselectedTopicId: data.topics.isNotEmpty
-                            ? data.topics.first.id
-                            : null,
-                      ),
-                    );
-                  }
-                  return RefreshIndicator(
-                    onRefresh: _refresh,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 96),
-                      itemCount: data.bookmarks.length,
-                      itemBuilder: (context, i) {
-                        final b = data.bookmarks[i];
-                        return _BookmarkCard(
-                          bookmark: b,
-                          onTap: () => _openForm(bookmark: b),
-                          onDelete: () => _delete(b),
-                        );
-                      },
-                    ),
-                  );
-                },
+            if (_loading && _bookmarks != null)
+              LinearProgressIndicator(
+                minHeight: 2,
+                color: theme.colorScheme.primary,
+                backgroundColor: theme.colorScheme.outlineVariant,
               ),
-            ),
+            Expanded(child: _buildBody(theme)),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildBody(ThemeData theme) {
+    if (_loading && _bookmarks == null) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+
+    if (_error != null) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        children: [
+          const SizedBox(height: 40),
+          Icon(Icons.cloud_off_outlined,
+              size: 36, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(height: 12),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: OutlinedButton(
+              onPressed: _load,
+              child: const Text('Coba lagi'),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final bookmarks = _bookmarks ?? const <Bookmark>[];
+
+    if (bookmarks.isEmpty) {
+      return _EmptyState(
+        isSearch: _query.isNotEmpty,
+        query: _query,
+        onAdd: () => _openForm(
+          preselectedTopicId:
+              _topics.isNotEmpty ? _topics.first.id : null,
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 96),
+        itemCount: bookmarks.length,
+        itemBuilder: (context, i) {
+          final b = bookmarks[i];
+          return _BookmarkCard(
+            bookmark: b,
+            onTap: () => _openForm(bookmark: b),
+            onDelete: () => _delete(b),
+          );
+        },
+      ),
+    );
+  }
 }
 
-class _BookmarksData {
-  final List<Topic> topics;
-  final List<Bookmark> bookmarks;
-  _BookmarksData({required this.topics, required this.bookmarks});
+// ================== Komponen pendukung ==================
+
+class _EmptyState extends StatelessWidget {
+  final bool isSearch;
+  final String query;
+  final VoidCallback onAdd;
+
+  const _EmptyState({
+    required this.isSearch,
+    required this.query,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(32),
+      children: [
+        const SizedBox(height: 40),
+        Icon(
+          isSearch ? Icons.search_off_outlined : Icons.bookmark_border,
+          size: 40,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          isSearch ? 'Tidak ada hasil' : 'Belum ada bookmark',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.headlineMedium,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          isSearch
+              ? 'Tidak ada bookmark yang cocok dengan "$query".'
+              : 'Simpan artikel atau catatan pentingmu di sini.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        if (!isSearch) ...[
+          const SizedBox(height: 20),
+          Center(
+            child: FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Tambah bookmark'),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 class _BookmarkCard extends StatelessWidget {
@@ -279,78 +410,6 @@ class _BookmarkCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final VoidCallback onAdd;
-  const _EmptyState({required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.bookmark_border,
-                size: 40, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(height: 16),
-            Text('Belum ada bookmark', style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            Text(
-              'Simpan artikel atau catatan pentingmu di sini.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Tambah bookmark'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorView extends StatelessWidget {
-  final String message;
-  final Future<void> Function() onRetry;
-  const _ErrorView({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        const SizedBox(height: 40),
-        Icon(Icons.cloud_off_outlined,
-            size: 36, color: theme.colorScheme.onSurfaceVariant),
-        const SizedBox(height: 12),
-        Text(
-          message,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: OutlinedButton(
-            onPressed: () => onRetry(),
-            child: const Text('Coba lagi'),
-          ),
-        ),
-      ],
     );
   }
 }
