@@ -25,21 +25,55 @@ class BookmarkController extends Controller
         return response()->json(['data' => $query->get()]);
     }
 
+    /** GET /api/bookmarks/check?source_id=X */
+    public function check(Request $request): JsonResponse
+    {
+        $request->validate([
+            'source_id' => ['required', 'string'],
+        ]);
+
+        $bookmark = $request->user()->bookmarks()
+            ->where('source_id', $request->source_id)
+            ->first();
+
+        return response()->json([
+            'saved'       => (bool) $bookmark,
+            'bookmark_id' => $bookmark?->id,
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'topic_id'   => ['required', 'exists:topics,id'],
-            'title'      => ['required', 'string', 'max:255'],
-            'summary'    => ['required', 'string'],
-            'key_points' => ['required', 'array', 'min:1'],
+            'topic_id'     => ['required', 'exists:topics,id'],
+            'title'        => ['required', 'string', 'max:255'],
+            'summary'      => ['required', 'string'],
+            'key_points'   => ['required', 'array', 'min:1'],
             'key_points.*' => ['string'],
+            'source_id'    => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
+
+        // Cegah duplikat: kalau user sudah simpan source ini, kembalikan existing
+        if (! empty($data['source_id'])) {
+            $existing = $request->user()->bookmarks()
+                ->where('source_id', $data['source_id'])
+                ->first();
+
+            if ($existing) {
+                return response()->json([
+                    'message'        => 'Bookmark sudah ada',
+                    'data'           => $existing->load('topic'),
+                    'already_exists' => true,
+                ], 200);
+            }
+        }
 
         $bookmark = $request->user()->bookmarks()->create($data);
 
         return response()->json([
-            'message' => 'Bookmark created',
-            'data'    => $bookmark->load('topic'),
+            'message'        => 'Bookmark created',
+            'data'           => $bookmark->load('topic'),
+            'already_exists' => false,
         ], 201);
     }
 

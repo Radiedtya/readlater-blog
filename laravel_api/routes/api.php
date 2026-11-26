@@ -34,5 +34,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/topics',         [TopicController::class, 'index']);
     Route::get('/topics/{topic}', [TopicController::class, 'show']);
 
+    Route::get('/bookmarks/check', [BookmarkController::class, 'check']);
     Route::apiResource('bookmarks', BookmarkController::class);
 });

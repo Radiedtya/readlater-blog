@@ -27,8 +27,20 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Future<PublicPostDetail> _fetch() async {
-    final post = await PublicApiService.getPost(widget.postId);
-    if (mounted) setState(() => _loadedPost = post);
+    // Ambil post & status tersimpan secara paralel.
+    final results = await Future.wait([
+      PublicApiService.getPost(widget.postId),
+      CrudService.isSourceSaved(widget.postId.toString()),
+    ]);
+    final post = results[0] as PublicPostDetail;
+    final saved = results[1] as bool;
+
+    if (mounted) {
+      setState(() {
+        _loadedPost = post;
+        _saved = saved;
+      });
+    }
     return post;
   }
 
@@ -42,27 +54,26 @@ class _DetailScreenState extends State<DetailScreen> {
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: _SaveBookmarkSheet(
+          post: post,
+          sourceId: widget.postId.toString(), // ← kirim source_id
         ),
-        child: _SaveBookmarkSheet(post: post),
       ),
     );
 
     if (saved == true && mounted) {
       setState(() => _saved = true);
-      // Sinyal ke BookmarksScreen agar reload otomatis
       BookmarkEvents.instance.notifyChanged();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Disimpan ke bookmark')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Disimpan ke bookmark')));
     }
   }
 
   void _showAlreadySavedMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Artikel ini sudah disimpan')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Artikel ini sudah disimpan')));
   }
 
   @override
@@ -77,8 +88,6 @@ class _DetailScreenState extends State<DetailScreen> {
           IconButton(
             icon: Icon(
               _saved ? Icons.bookmark : Icons.bookmark_border,
-              // Warna eksplisit supaya saat tersimpan icon tampil solid,
-              // bukan pudar karena disabled.
               color: _saved ? theme.colorScheme.primary : null,
             ),
             tooltip: _saved ? 'Sudah disimpan' : 'Simpan ke bookmark',
@@ -93,7 +102,8 @@ class _DetailScreenState extends State<DetailScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-                child: CircularProgressIndicator(strokeWidth: 2));
+              child: CircularProgressIndicator(strokeWidth: 2),
+            );
           }
           if (snapshot.hasError) {
             return Center(
@@ -111,8 +121,10 @@ class _DetailScreenState extends State<DetailScreen> {
               children: [
                 Text(
                   post.title,
-                  style: theme.textTheme.headlineMedium
-                      ?.copyWith(fontSize: 28, height: 1.25),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontSize: 28,
+                    height: 1.25,
+                  ),
                 ),
                 if (post.tags.isNotEmpty) ...[
                   const SizedBox(height: 12),
@@ -120,17 +132,21 @@ class _DetailScreenState extends State<DetailScreen> {
                     spacing: 6,
                     runSpacing: 6,
                     children: post.tags
-                        .map((t) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                    color: theme.colorScheme.outlineVariant),
-                                borderRadius: BorderRadius.circular(6),
+                        .map(
+                          (t) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: theme.colorScheme.outlineVariant,
                               ),
-                              child: Text(t,
-                                  style: theme.textTheme.labelSmall),
-                            ))
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(t, style: theme.textTheme.labelSmall),
+                          ),
+                        )
                         .toList(),
                   ),
                 ],
@@ -138,12 +154,11 @@ class _DetailScreenState extends State<DetailScreen> {
                 Row(
                   children: [
                     _Meta(
-                        icon: Icons.visibility_outlined,
-                        label: '${post.views}'),
+                      icon: Icons.visibility_outlined,
+                      label: '${post.views}',
+                    ),
                     const SizedBox(width: 16),
-                    _Meta(
-                        icon: Icons.favorite_border,
-                        label: '${post.likes}'),
+                    _Meta(icon: Icons.favorite_border, label: '${post.likes}'),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -189,7 +204,9 @@ class _Meta extends StatelessWidget {
 
 class _SaveBookmarkSheet extends StatefulWidget {
   final PublicPostDetail post;
-  const _SaveBookmarkSheet({required this.post});
+  final String sourceId; // ← baru
+
+  const _SaveBookmarkSheet({required this.post, required this.sourceId});
 
   @override
   State<_SaveBookmarkSheet> createState() => _SaveBookmarkSheetState();
@@ -214,8 +231,9 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
     _titleController = TextEditingController(text: widget.post.title);
 
     final body = widget.post.body.replaceAll(RegExp(r'\s+'), ' ').trim();
-    final summaryText =
-        body.length > 300 ? '${body.substring(0, 300).trimRight()}…' : body;
+    final summaryText = body.length > 300
+        ? '${body.substring(0, 300).trimRight()}…'
+        : body;
     _summaryController = TextEditingController(text: summaryText);
 
     for (final tag in widget.post.tags.take(5)) {
@@ -301,8 +319,11 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
         title: _titleController.text.trim(),
         summary: _summaryController.text.trim(),
         keyPoints: keyPoints,
+        sourceId: widget.sourceId, // ← kirim source_id
       );
-      debugPrint('✓ Bookmark dari detail tersimpan');
+      debugPrint(
+        '✓ Bookmark dari detail tersimpan (source_id=${widget.sourceId})',
+      );
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
@@ -325,8 +346,7 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
       child: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: SafeArea(
           top: false,
@@ -358,8 +378,9 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                           Expanded(
                             child: Text(
                               'Simpan ke bookmark',
-                              style: theme.textTheme.headlineMedium
-                                  ?.copyWith(fontSize: 22),
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                fontSize: 22,
+                              ),
                             ),
                           ),
                           IconButton(
@@ -376,8 +397,7 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                       child: Form(
                         key: _formKey,
                         child: SingleChildScrollView(
-                          padding:
-                              const EdgeInsets.fromLTRB(24, 16, 24, 16),
+                          padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -388,18 +408,18 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                                   prefixIcon: Icon(Icons.sell_outlined),
                                 ),
                                 items: _topics
-                                    .map((t) => DropdownMenuItem(
-                                          value: t.id,
-                                          child: Text(t.name),
-                                        ))
+                                    .map(
+                                      (t) => DropdownMenuItem(
+                                        value: t.id,
+                                        child: Text(t.name),
+                                      ),
+                                    )
                                     .toList(),
                                 onChanged: _saving
                                     ? null
-                                    : (v) =>
-                                        setState(() => _topicId = v),
-                                validator: (v) => v == null
-                                    ? 'Topik wajib dipilih'
-                                    : null,
+                                    : (v) => setState(() => _topicId = v),
+                                validator: (v) =>
+                                    v == null ? 'Topik wajib dipilih' : null,
                               ),
                               const SizedBox(height: 16),
                               TextFormField(
@@ -412,8 +432,8 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                                 ),
                                 validator: (v) =>
                                     (v == null || v.trim().isEmpty)
-                                        ? 'Judul wajib diisi'
-                                        : null,
+                                    ? 'Judul wajib diisi'
+                                    : null,
                               ),
                               const SizedBox(height: 16),
                               TextFormField(
@@ -427,34 +447,32 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                                 ),
                                 validator: (v) =>
                                     (v == null || v.trim().isEmpty)
-                                        ? 'Ringkasan wajib diisi'
-                                        : null,
+                                    ? 'Ringkasan wajib diisi'
+                                    : null,
                               ),
                               const SizedBox(height: 20),
                               Row(
                                 children: [
                                   Expanded(
-                                    child: Text('Poin penting',
-                                        style:
-                                            theme.textTheme.titleSmall),
+                                    child: Text(
+                                      'Poin penting',
+                                      style: theme.textTheme.titleSmall,
+                                    ),
                                   ),
                                   TextButton.icon(
-                                    onPressed:
-                                        _saving ? null : _addKeyPoint,
+                                    onPressed: _saving ? null : _addKeyPoint,
                                     icon: const Icon(Icons.add, size: 16),
                                     label: const Text('Tambah'),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 4),
-                              ..._keyPointControllers
-                                  .asMap()
-                                  .entries
-                                  .map((entry) {
+                              ..._keyPointControllers.asMap().entries.map((
+                                entry,
+                              ) {
                                 final i = entry.key;
                                 return Padding(
-                                  padding:
-                                      const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.only(bottom: 12),
                                   child: Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -466,21 +484,20 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                                           decoration: InputDecoration(
                                             hintText: 'Poin ${i + 1}',
                                             prefixIcon: const Icon(
-                                                Icons.circle,
-                                                size: 8),
+                                              Icons.circle,
+                                              size: 8,
+                                            ),
                                           ),
                                         ),
                                       ),
                                       const SizedBox(width: 8),
                                       IconButton(
-                                        onPressed: (!_saving &&
-                                                _keyPointControllers
-                                                        .length >
-                                                    1)
+                                        onPressed:
+                                            (!_saving &&
+                                                _keyPointControllers.length > 1)
                                             ? () => _removeKeyPoint(i)
                                             : null,
-                                        icon: const Icon(Icons.close,
-                                            size: 18),
+                                        icon: const Icon(Icons.close, size: 18),
                                         tooltip: 'Hapus poin',
                                       ),
                                     ],
@@ -490,21 +507,21 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                               if (_error != null) ...[
                                 const SizedBox(height: 4),
                                 Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(Icons.error_outline,
-                                        size: 18,
-                                        color: theme.colorScheme.error),
+                                    Icon(
+                                      Icons.error_outline,
+                                      size: 18,
+                                      color: theme.colorScheme.error,
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         _error!,
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
-                                          color:
-                                              theme.colorScheme.error,
-                                        ),
+                                              color: theme.colorScheme.error,
+                                            ),
                                       ),
                                     ),
                                   ],
@@ -533,7 +550,8 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                                   : () => Navigator.of(context).pop(),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                  vertical: 14,
+                                ),
                               ),
                               child: const Text('Batal'),
                             ),
@@ -544,7 +562,8 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                               onPressed: _saving ? null : _save,
                               style: FilledButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                  vertical: 14,
+                                ),
                               ),
                               child: _saving
                                   ? const SizedBox(

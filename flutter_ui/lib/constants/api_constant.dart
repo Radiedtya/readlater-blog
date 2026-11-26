@@ -30,6 +30,7 @@ class ApiConstant {
 
   // ---- Bookmarks ----
   static const String bookmarks = '/api/bookmarks';
+  static const String bookmarksCheck = '/api/bookmarks/check';
   static String bookmark(int id) => '/api/bookmarks/$id';
 
   // ---- Public API (proxy dummyjson lewat Laravel) ----

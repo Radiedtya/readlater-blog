@@ -6,6 +6,7 @@ class Bookmark {
   final String title;
   final String summary;
   final List<String> keyPoints;
+  final String? sourceId;
   final Topic? topic;
   final DateTime? createdAt;
 
@@ -15,6 +16,7 @@ class Bookmark {
     required this.title,
     required this.summary,
     required this.keyPoints,
+    this.sourceId,
     this.topic,
     this.createdAt,
   });
@@ -27,6 +29,7 @@ class Bookmark {
         keyPoints: (json['key_points'] as List<dynamic>? ?? [])
             .map((e) => e.toString())
             .toList(),
+        sourceId: json['source_id'] as String?,
         topic: json['topic'] != null
             ? Topic.fromJson(json['topic'] as Map<String, dynamic>)
             : null,

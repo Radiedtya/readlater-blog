@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 import '../constants/api_constant.dart';
@@ -23,10 +24,12 @@ class CrudService {
 
   static Future<List<Bookmark>> getBookmarks({int? topicId, String? q}) async {
     final uri = Uri.parse('${ApiConstant.baseUrl}${ApiConstant.bookmarks}')
-        .replace(queryParameters: {
-      if (topicId != null) 'topic_id': topicId.toString(),
-      if (q != null && q.isNotEmpty) 'q': q,
-    });
+        .replace(
+          queryParameters: {
+            if (topicId != null) 'topic_id': topicId.toString(),
+            if (q != null && q.isNotEmpty) 'q': q,
+          },
+        );
     final res = await http.get(uri, headers: await AuthService.authHeaders());
     if (res.statusCode != 200) {
       throw Exception('Gagal memuat bookmark (${res.statusCode})');
@@ -42,6 +45,7 @@ class CrudService {
     required String title,
     required String summary,
     required List<String> keyPoints,
+    String? sourceId,
   }) async {
     final res = await http.post(
       Uri.parse('${ApiConstant.baseUrl}${ApiConstant.bookmarks}'),
@@ -51,10 +55,11 @@ class CrudService {
         'title': title,
         'summary': summary,
         'key_points': keyPoints,
+        if (sourceId != null && sourceId.isNotEmpty) 'source_id': sourceId,
       }),
     );
     final body = jsonDecode(res.body) as Map<String, dynamic>;
-    if (res.statusCode != 201) {
+    if (res.statusCode != 201 && res.statusCode != 200) {
       throw Exception(body['message'] ?? 'Gagal membuat bookmark');
     }
     return Bookmark.fromJson(body['data'] as Map<String, dynamic>);
@@ -91,6 +96,22 @@ class CrudService {
     );
     if (res.statusCode != 200) {
       throw Exception('Gagal menghapus bookmark (${res.statusCode})');
+    }
+  }
+
+  static Future<bool> isSourceSaved(String sourceId) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConstant.baseUrl}${ApiConstant.bookmarksCheck}',
+      ).replace(queryParameters: {'source_id': sourceId});
+
+      final res = await http.get(uri, headers: await AuthService.authHeaders());
+      if (res.statusCode != 200) return false;
+
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return body['saved'] == true;
+    } catch (_) {
+      return false;
     }
   }
 }
