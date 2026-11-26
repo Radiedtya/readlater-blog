@@ -7,6 +7,7 @@ import '../models/bookmark.dart';
 import '../models/topic.dart';
 import '../routes/app_routing.dart';
 import '../services/crud_service.dart';
+import '../state/bookmark_events.dart';
 import '../widgets/search_field.dart';
 
 class BookmarksScreen extends StatefulWidget {
@@ -29,14 +30,24 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   @override
   void initState() {
     super.initState();
+    BookmarkEvents.instance.addListener(_onBookmarkChanged);
     _load();
   }
 
   @override
   void dispose() {
+    BookmarkEvents.instance.removeListener(_onBookmarkChanged);
     _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Dipanggil saat ada sinyal "bookmark berubah" dari screen lain
+  /// (misal user baru simpan dari DetailScreen).
+  void _onBookmarkChanged() {
+    if (!mounted) return;
+    debugPrint('→ BookmarkEvents: reload bookmark list');
+    _load();
   }
 
   Future<void> _load() async {
@@ -106,7 +117,8 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     );
     debugPrint('← Form ditutup, result=$result');
     if (!mounted) return;
-    await _load();
+    // Refresh jika form menyimpan perubahan (tambah/edit)
+    if (result == true) await _load();
   }
 
   Future<void> _delete(Bookmark bookmark) async {
@@ -155,8 +167,8 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12)),
         child: const Icon(Icons.add),
       ),
       body: SafeArea(

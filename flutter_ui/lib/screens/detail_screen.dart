@@ -1,7 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/public_post_detail.dart';
+import '../models/topic.dart';
+import '../services/crud_service.dart';
 import '../services/public_api_service.dart';
+import '../state/bookmark_events.dart';
 
 class DetailScreen extends StatefulWidget {
   final int postId;
@@ -13,11 +17,52 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   late Future<PublicPostDetail> _future;
+  PublicPostDetail? _loadedPost;
+  bool _saved = false;
 
   @override
   void initState() {
     super.initState();
-    _future = PublicApiService.getPost(widget.postId);
+    _future = _fetch();
+  }
+
+  Future<PublicPostDetail> _fetch() async {
+    final post = await PublicApiService.getPost(widget.postId);
+    if (mounted) setState(() => _loadedPost = post);
+    return post;
+  }
+
+  Future<void> _openSaveSheet() async {
+    final post = _loadedPost;
+    if (post == null) return;
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        ),
+        child: _SaveBookmarkSheet(post: post),
+      ),
+    );
+
+    if (saved == true && mounted) {
+      setState(() => _saved = true);
+      // Sinyal ke BookmarksScreen agar reload otomatis
+      BookmarkEvents.instance.notifyChanged();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Disimpan ke bookmark')),
+      );
+    }
+  }
+
+  void _showAlreadySavedMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Artikel ini sudah disimpan')),
+    );
   }
 
   @override
@@ -28,6 +73,20 @@ class _DetailScreenState extends State<DetailScreen> {
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         scrolledUnderElevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(
+              _saved ? Icons.bookmark : Icons.bookmark_border,
+              // Warna eksplisit supaya saat tersimpan icon tampil solid,
+              // bukan pudar karena disabled.
+              color: _saved ? theme.colorScheme.primary : null,
+            ),
+            tooltip: _saved ? 'Sudah disimpan' : 'Simpan ke bookmark',
+            onPressed: _loadedPost == null
+                ? null
+                : (_saved ? _showAlreadySavedMessage : _openSaveSheet),
+          ),
+        ],
       ),
       body: FutureBuilder<PublicPostDetail>(
         future: _future,
@@ -52,10 +111,8 @@ class _DetailScreenState extends State<DetailScreen> {
               children: [
                 Text(
                   post.title,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontSize: 28,
-                    height: 1.25,
-                  ),
+                  style: theme.textTheme.headlineMedium
+                      ?.copyWith(fontSize: 28, height: 1.25),
                 ),
                 if (post.tags.isNotEmpty) ...[
                   const SizedBox(height: 12),
@@ -80,9 +137,13 @@ class _DetailScreenState extends State<DetailScreen> {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    _Meta(icon: Icons.visibility_outlined, label: '${post.views}'),
+                    _Meta(
+                        icon: Icons.visibility_outlined,
+                        label: '${post.views}'),
                     const SizedBox(width: 16),
-                    _Meta(icon: Icons.favorite_border, label: '${post.likes}'),
+                    _Meta(
+                        icon: Icons.favorite_border,
+                        label: '${post.likes}'),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -120,6 +181,390 @@ class _Meta extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ============ BOTTOM SHEET: Form Simpan ============
+
+class _SaveBookmarkSheet extends StatefulWidget {
+  final PublicPostDetail post;
+  const _SaveBookmarkSheet({required this.post});
+
+  @override
+  State<_SaveBookmarkSheet> createState() => _SaveBookmarkSheetState();
+}
+
+class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _titleController;
+  late final TextEditingController _summaryController;
+  final List<TextEditingController> _keyPointControllers = [];
+
+  List<Topic> _topics = [];
+  int? _topicId;
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _titleController = TextEditingController(text: widget.post.title);
+
+    final body = widget.post.body.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final summaryText =
+        body.length > 300 ? '${body.substring(0, 300).trimRight()}…' : body;
+    _summaryController = TextEditingController(text: summaryText);
+
+    for (final tag in widget.post.tags.take(5)) {
+      _keyPointControllers.add(TextEditingController(text: tag));
+    }
+    if (_keyPointControllers.isEmpty) {
+      _keyPointControllers.add(TextEditingController());
+    }
+
+    _loadTopics();
+  }
+
+  Future<void> _loadTopics() async {
+    try {
+      final topics = await CrudService.getTopics();
+      if (!mounted) return;
+      setState(() {
+        _topics = topics;
+        _topicId = topics.isNotEmpty ? topics.first.id : null;
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('✗ Gagal load topik: $e');
+      if (!mounted) return;
+      setState(() {
+        _error = 'Gagal memuat topik: $e';
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _summaryController.dispose();
+    for (final c in _keyPointControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _addKeyPoint() {
+    setState(() => _keyPointControllers.add(TextEditingController()));
+  }
+
+  void _removeKeyPoint(int i) {
+    setState(() {
+      _keyPointControllers[i].dispose();
+      _keyPointControllers.removeAt(i);
+      if (_keyPointControllers.isEmpty) {
+        _keyPointControllers.add(TextEditingController());
+      }
+    });
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    if (!_formKey.currentState!.validate()) return;
+
+    final keyPoints = _keyPointControllers
+        .map((c) => c.text.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    if (_topicId == null) {
+      setState(() => _error = 'Pilih topik terlebih dahulu.');
+      return;
+    }
+    if (keyPoints.isEmpty) {
+      setState(() => _error = 'Tambahkan minimal satu poin penting.');
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    try {
+      await CrudService.createBookmark(
+        topicId: _topicId!,
+        title: _titleController.text.trim(),
+        summary: _summaryController.text.trim(),
+        keyPoints: keyPoints,
+      );
+      debugPrint('✓ Bookmark dari detail tersimpan');
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      debugPrint('✗ Gagal simpan: $e');
+      if (!mounted) return;
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: _loading
+              ? const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10, bottom: 6),
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Simpan ke bookmark',
+                              style: theme.textTheme.headlineMedium
+                                  ?.copyWith(fontSize: 22),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _saving
+                                ? null
+                                : () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.close, size: 20),
+                            tooltip: 'Tutup',
+                          ),
+                        ],
+                      ),
+                    ),
+                    Flexible(
+                      child: Form(
+                        key: _formKey,
+                        child: SingleChildScrollView(
+                          padding:
+                              const EdgeInsets.fromLTRB(24, 16, 24, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              DropdownButtonFormField<int>(
+                                value: _topicId,
+                                decoration: const InputDecoration(
+                                  labelText: 'Topik',
+                                  prefixIcon: Icon(Icons.sell_outlined),
+                                ),
+                                items: _topics
+                                    .map((t) => DropdownMenuItem(
+                                          value: t.id,
+                                          child: Text(t.name),
+                                        ))
+                                    .toList(),
+                                onChanged: _saving
+                                    ? null
+                                    : (v) =>
+                                        setState(() => _topicId = v),
+                                validator: (v) => v == null
+                                    ? 'Topik wajib dipilih'
+                                    : null,
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _titleController,
+                                enabled: !_saving,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Judul',
+                                  prefixIcon: Icon(Icons.title),
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Judul wajib diisi'
+                                        : null,
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _summaryController,
+                                enabled: !_saving,
+                                maxLines: 4,
+                                minLines: 3,
+                                decoration: const InputDecoration(
+                                  labelText: 'Ringkasan',
+                                  alignLabelWithHint: true,
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Ringkasan wajib diisi'
+                                        : null,
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text('Poin penting',
+                                        style:
+                                            theme.textTheme.titleSmall),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed:
+                                        _saving ? null : _addKeyPoint,
+                                    icon: const Icon(Icons.add, size: 16),
+                                    label: const Text('Tambah'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              ..._keyPointControllers
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
+                                final i = entry.key;
+                                return Padding(
+                                  padding:
+                                      const EdgeInsets.only(bottom: 12),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: TextFormField(
+                                          controller: entry.value,
+                                          enabled: !_saving,
+                                          decoration: InputDecoration(
+                                            hintText: 'Poin ${i + 1}',
+                                            prefixIcon: const Icon(
+                                                Icons.circle,
+                                                size: 8),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        onPressed: (!_saving &&
+                                                _keyPointControllers
+                                                        .length >
+                                                    1)
+                                            ? () => _removeKeyPoint(i)
+                                            : null,
+                                        icon: const Icon(Icons.close,
+                                            size: 18),
+                                        tooltip: 'Hapus poin',
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                              if (_error != null) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.error_outline,
+                                        size: 18,
+                                        color: theme.colorScheme.error),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _error!,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                          color:
+                                              theme.colorScheme.error,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: theme.colorScheme.outlineVariant,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _saving
+                                  ? null
+                                  : () => Navigator.of(context).pop(),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
+                              ),
+                              child: const Text('Batal'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: _saving ? null : _save,
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
+                              ),
+                              child: _saving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text('Simpan'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
     );
   }
 }
