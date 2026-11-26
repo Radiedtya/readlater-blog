@@ -19,13 +19,19 @@ class PublicApiController extends Controller
             'limit' => (int) $request->input('limit', 20),
             'skip'  => (int) $request->input('skip', 0),
         ];
+        
         if ($request->filled('q')) {
             $params['q'] = $request->string('q')->toString();
         }
 
-        $res = Http::timeout(10)->get(self::BASE, $params)->throw();
+        try {
+            $res = Http::timeout(10)->get(self::BASE, $params)->throw();
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Gagal mengambil data dari public API',
+            ], 502);
+        }
 
-        // Detail list page: hanya title & tags
         $data = collect($res->json('posts', []))->map(fn ($p) => [
             'id'    => $p['id'],
             'title' => $p['title'],

@@ -27,12 +27,12 @@ Route::prefix('public')->group(function () {
 */
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user',   [AuthController::class, 'user']);
+    Route::put('/user', [AuthController::class, 'updateProfile']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Topics (read-only, karena di-seed)
     Route::get('/topics',         [TopicController::class, 'index']);
     Route::get('/topics/{topic}', [TopicController::class, 'show']);
 
-    // Bookmarks CRUD
     Route::apiResource('bookmarks', BookmarkController::class);
 });
