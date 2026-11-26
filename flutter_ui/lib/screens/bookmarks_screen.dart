@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/bookmark.dart';
@@ -14,6 +15,7 @@ class BookmarksScreen extends StatefulWidget {
 
 class _BookmarksScreenState extends State<BookmarksScreen> {
   late Future<_BookmarksData> _future;
+  int _refreshCounter = 0;
 
   @override
   void initState() {
@@ -32,9 +34,20 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     );
   }
 
+  /// Selalu berhasil (tidak throw ke pemanggil).
+  /// Error akan ditampilkan oleh FutureBuilder.
   Future<void> _refresh() async {
-    setState(() => _future = _load());
-    await _future;
+    if (!mounted) return;
+    final future = _load();
+    setState(() {
+      _future = future;
+      _refreshCounter++;
+    });
+    try {
+      await future;
+    } catch (e) {
+      debugPrint('⚠ Refresh bookmark gagal (akan ditampilkan di UI): $e');
+    }
   }
 
   Future<void> _openForm({Bookmark? bookmark, int? preselectedTopicId}) async {
@@ -45,37 +58,52 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
         'preselectedTopicId': preselectedTopicId,
       },
     );
-    if (result == true) _refresh();
+    debugPrint('← Form ditutup, result=$result');
+    if (!mounted) return;
+    await _refresh();
   }
 
   Future<void> _delete(Bookmark bookmark) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Hapus bookmark?'),
         content: Text('"${bookmark.title}" akan dihapus permanen.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Batal'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Hapus'),
           ),
         ],
       ),
     );
-    if (confirmed != true) return;
+
+    if (confirmed != true || !mounted) return;
+
+    // 1) Hapus di server
     try {
       await CrudService.deleteBookmark(bookmark.id);
-      await _refresh();
+      debugPrint('✓ Bookmark #${bookmark.id} dihapus di server');
     } catch (e) {
+      debugPrint('✗ Gagal hapus di server: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal: $e')),
+        SnackBar(content: Text('Gagal menghapus: $e')),
       );
+      return; // stop, jangan refresh
     }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('"${bookmark.title}" dihapus')),
+    );
+
+    // 2) Refresh list (tidak akan throw karena _refresh handle internal)
+    await _refresh();
   }
 
   @override
@@ -84,8 +112,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: const Icon(Icons.add),
       ),
       body: SafeArea(
@@ -110,18 +137,18 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
             ),
             Expanded(
               child: FutureBuilder<_BookmarksData>(
+                key: ValueKey(_refreshCounter),
                 future: _future,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2));
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    );
                   }
                   if (snapshot.hasError) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text('Gagal memuat: ${snapshot.error}'),
-                      ),
+                    return _ErrorView(
+                      message: snapshot.error.toString(),
+                      onRetry: _refresh,
                     );
                   }
                   final data = snapshot.data!;
@@ -199,9 +226,8 @@ class _BookmarkCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       bookmark.topic?.name ?? 'Tanpa topik',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        letterSpacing: 0.6,
-                      ),
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(letterSpacing: 0.6),
                     ),
                   ),
                   IconButton(
@@ -218,10 +244,8 @@ class _BookmarkCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 bookmark.title,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontSize: 18,
-                  height: 1.3,
-                ),
+                style: theme.textTheme.headlineMedium
+                    ?.copyWith(fontSize: 18, height: 1.3),
               ),
               const SizedBox(height: 8),
               Text(
@@ -293,6 +317,40 @@ class _EmptyState extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const SizedBox(height: 40),
+        Icon(Icons.cloud_off_outlined,
+            size: 36, color: theme.colorScheme.onSurfaceVariant),
+        const SizedBox(height: 12),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: OutlinedButton(
+            onPressed: () => onRetry(),
+            child: const Text('Coba lagi'),
+          ),
+        ),
+      ],
     );
   }
 }

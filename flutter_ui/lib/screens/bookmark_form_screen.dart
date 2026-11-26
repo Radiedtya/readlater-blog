@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/bookmark.dart';
@@ -41,6 +42,7 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
   Future<void> _initialize() async {
     try {
       final topics = await CrudService.getTopics();
+      if (!mounted) return;
       setState(() {
         _topics = topics;
         if (_isEdit) {
@@ -61,8 +63,10 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
         _loading = false;
       });
     } catch (e) {
+      debugPrint('✗ Gagal load topik: $e');
+      if (!mounted) return;
       setState(() {
-        _error = 'Gagal memuat topik: $e';
+        _error = 'Gagal memuat daftar topik: $e';
         _loading = false;
       });
     }
@@ -93,11 +97,18 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_saving) return;
+
+    if (!_formKey.currentState!.validate()) {
+      debugPrint('✗ Validasi form gagal');
+      return;
+    }
+
     final keyPoints = _keyPointControllers
         .map((c) => c.text.trim())
         .where((s) => s.isNotEmpty)
         .toList();
+
     if (_topicId == null) {
       setState(() => _error = 'Pilih topik terlebih dahulu.');
       return;
@@ -106,12 +117,15 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
       setState(() => _error = 'Tambahkan minimal satu poin penting.');
       return;
     }
+
     setState(() {
       _saving = true;
       _error = null;
     });
+
     try {
       if (_isEdit) {
+        debugPrint('→ Update bookmark #${widget.existing!.id}');
         await CrudService.updateBookmark(
           widget.existing!.id,
           topicId: _topicId,
@@ -120,6 +134,7 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
           keyPoints: keyPoints,
         );
       } else {
+        debugPrint('→ Create bookmark');
         await CrudService.createBookmark(
           topicId: _topicId!,
           title: _titleController.text.trim(),
@@ -127,10 +142,18 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
           keyPoints: keyPoints,
         );
       }
+
+      debugPrint('✓ Bookmark tersimpan');
+
       if (!mounted) return;
       Navigator.of(context).pop(true);
+      return; // guard: jangan eksekusi finally pada widget yang sudah di-pop
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      debugPrint('✗ Gagal simpan: $e');
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -156,6 +179,8 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
                       style: theme.textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 24),
+
+                    // Topik
                     DropdownButtonFormField<int>(
                       value: _topicId,
                       decoration: const InputDecoration(
@@ -168,14 +193,19 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
                                 child: Text(t.name),
                               ))
                           .toList(),
-                      onChanged: (v) => setState(() => _topicId = v),
+                      onChanged: _saving
+                          ? null
+                          : (v) => setState(() => _topicId = v),
                       validator: (v) =>
                           v == null ? 'Topik wajib dipilih' : null,
                     ),
                     const SizedBox(height: 16),
+
+                    // Judul
                     TextFormField(
                       controller: _titleController,
                       textInputAction: TextInputAction.next,
+                      enabled: !_saving,
                       decoration: const InputDecoration(
                         labelText: 'Judul artikel',
                         prefixIcon: Icon(Icons.title),
@@ -186,9 +216,12 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
                               : null,
                     ),
                     const SizedBox(height: 16),
+
+                    // Ringkasan
                     TextFormField(
                       controller: _summaryController,
                       maxLines: 4,
+                      enabled: !_saving,
                       decoration: const InputDecoration(
                         labelText: 'Ringkasan',
                         alignLabelWithHint: true,
@@ -199,6 +232,8 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
                               : null,
                     ),
                     const SizedBox(height: 24),
+
+                    // Poin penting
                     Row(
                       children: [
                         Expanded(
@@ -206,7 +241,7 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
                               style: theme.textTheme.titleSmall),
                         ),
                         TextButton.icon(
-                          onPressed: _addKeyPoint,
+                          onPressed: _saving ? null : _addKeyPoint,
                           icon: const Icon(Icons.add, size: 16),
                           label: const Text('Tambah'),
                         ),
@@ -223,16 +258,17 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
                             Expanded(
                               child: TextFormField(
                                 controller: entry.value,
+                                enabled: !_saving,
                                 decoration: InputDecoration(
                                   hintText: 'Poin ${i + 1}',
-                                  prefixIcon:
-                                      const Icon(Icons.circle, size: 8),
+                                  prefixIcon: const Icon(Icons.circle, size: 8),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             IconButton(
-                              onPressed: _keyPointControllers.length > 1
+                              onPressed: (!_saving &&
+                                      _keyPointControllers.length > 1)
                                   ? () => _removeKeyPoint(i)
                                   : null,
                               icon: const Icon(Icons.close, size: 18),
@@ -241,6 +277,8 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
                         ),
                       );
                     }),
+
+                    // Error inline
                     if (_error != null) ...[
                       const SizedBox(height: 8),
                       Row(
@@ -260,7 +298,10 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
                         ],
                       ),
                     ],
+
                     const SizedBox(height: 24),
+
+                    // Tombol simpan
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
@@ -273,7 +314,9 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
                                 width: 18,
                                 height: 18,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : Text(_isEdit ? 'Simpan perubahan' : 'Simpan'),
                       ),
