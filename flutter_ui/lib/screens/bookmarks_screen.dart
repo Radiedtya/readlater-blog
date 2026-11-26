@@ -42,8 +42,6 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     super.dispose();
   }
 
-  /// Dipanggil saat ada sinyal "bookmark berubah" dari screen lain
-  /// (misal user baru simpan dari DetailScreen).
   void _onBookmarkChanged() {
     if (!mounted) return;
     debugPrint('→ BookmarkEvents: reload bookmark list');
@@ -117,7 +115,6 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     );
     debugPrint('← Form ditutup, result=$result');
     if (!mounted) return;
-    // Refresh jika form menyimpan perubahan (tambah/edit)
     if (result == true) await _load();
   }
 
@@ -148,16 +145,14 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     } catch (e) {
       debugPrint('✗ Gagal hapus: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menghapus: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal menghapus: $e')));
       return;
     }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('"${bookmark.title}" dihapus')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('"${bookmark.title}" dihapus')));
     await _load();
   }
 
@@ -165,11 +160,13 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.transparent, // Biar gradasi HomeScreen tembus
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12)),
-        child: const Icon(Icons.add),
+        backgroundColor: const Color(0xFF1E1E1E),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
       body: SafeArea(
         child: Column(
@@ -185,10 +182,10 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                   Text(
                     'Koleksi pribadimu',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: Colors.black54,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   SearchField(
                     controller: _searchController,
                     hintText: 'Cari bookmark',
@@ -205,7 +202,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
               LinearProgressIndicator(
                 minHeight: 2,
                 color: theme.colorScheme.primary,
-                backgroundColor: theme.colorScheme.outlineVariant,
+                backgroundColor: Colors.transparent,
               ),
             Expanded(child: _buildBody(theme)),
           ],
@@ -225,15 +222,12 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
         padding: const EdgeInsets.all(24),
         children: [
           const SizedBox(height: 40),
-          Icon(Icons.cloud_off_outlined,
-              size: 36, color: theme.colorScheme.onSurfaceVariant),
+          const Icon(Icons.cloud_off_outlined, size: 36, color: Colors.black38),
           const SizedBox(height: 12),
           Text(
             _error!,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
           ),
           const SizedBox(height: 16),
           Center(
@@ -253,8 +247,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
         isSearch: _query.isNotEmpty,
         query: _query,
         onAdd: () => _openForm(
-          preselectedTopicId:
-              _topics.isNotEmpty ? _topics.first.id : null,
+          preselectedTopicId: _topics.isNotEmpty ? _topics.first.id : null,
         ),
       );
     }
@@ -263,7 +256,8 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
       onRefresh: _load,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 96),
+        // Padding bawah 120 agar tidak tertutup navbar melayang
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
         itemCount: bookmarks.length,
         itemBuilder: (context, i) {
           final b = bookmarks[i];
@@ -302,7 +296,7 @@ class _EmptyState extends StatelessWidget {
         Icon(
           isSearch ? Icons.search_off_outlined : Icons.bookmark_border,
           size: 40,
-          color: theme.colorScheme.onSurfaceVariant,
+          color: Colors.black38,
         ),
         const SizedBox(height: 16),
         Text(
@@ -316,9 +310,7 @@ class _EmptyState extends StatelessWidget {
               ? 'Tidak ada bookmark yang cocok dengan "$query".'
               : 'Simpan artikel atau catatan pentingmu di sini.',
           textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
         ),
         if (!isSearch) ...[
           const SizedBox(height: 20),
@@ -352,73 +344,95 @@ class _BookmarkCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.7), // Efek kaca transparan
+        borderRadius: BorderRadius.circular(24), // Lebih membulat
+        border: Border.all(color: Colors.white, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      bookmark.topic?.name ?? 'Tanpa topik',
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(letterSpacing: 0.6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        bookmark.topic?.name.toUpperCase() ?? 'TANPA TOPIK',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: const Color(0xFFD87A59), // Warna aksen peach
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                     ),
+                    IconButton(
+                      onPressed: onDelete,
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      color: Colors.black38,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Hapus',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  bookmark.title,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    height: 1.3,
+                    fontWeight: FontWeight.w600,
                   ),
-                  IconButton(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(),
-                    color: theme.colorScheme.onSurfaceVariant,
-                    tooltip: 'Hapus',
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  bookmark.summary,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.black54,
+                    height: 1.5,
+                  ),
+                ),
+                if (bookmark.keyPoints.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: bookmark.keyPoints.take(3).map((p) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3EFFF), // Warna lavender soft
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          p,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: Colors.indigo.shade400,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                bookmark.title,
-                style: theme.textTheme.headlineMedium
-                    ?.copyWith(fontSize: 18, height: 1.3),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                bookmark.summary,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  height: 1.5,
-                ),
-              ),
-              if (bookmark.keyPoints.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: bookmark.keyPoints.take(3).map((p) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(p, style: theme.textTheme.labelSmall),
-                    );
-                  }).toList(),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),

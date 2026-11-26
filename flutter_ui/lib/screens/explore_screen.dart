@@ -67,19 +67,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
     _debounce?.cancel();
     final trimmed = value.trim();
     if (trimmed == _query) {
-      setState(() {}); // update suffix clear icon
+      setState(() {});
       return;
     }
     setState(() => _query = trimmed);
     _debounce = Timer(const Duration(milliseconds: 300), _load);
-  }
-
-  void _onSearchSubmitted(String value) {
-    _debounce?.cancel();
-    final trimmed = value.trim();
-    if (trimmed == _query) return;
-    setState(() => _query = trimmed);
-    _load();
   }
 
   void _clearSearch() {
@@ -97,6 +89,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.transparent, // Transparan agar gradasi terlihat
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,15 +104,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   Text(
                     'Artikel pilihan dari komunitas',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: Colors.black54,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   SearchField(
                     controller: _searchController,
                     hintText: 'Cari artikel',
                     onChanged: _onSearchChanged,
-                    onSubmitted: _onSearchSubmitted,
+                    onSubmitted: (v) => _onSearchChanged(v),
                     onClear: _searchController.text.isEmpty
                         ? null
                         : _clearSearch,
@@ -127,12 +120,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ],
               ),
             ),
-            // Subtle loading indicator saat re-search (data lama tetap tampil)
             if (_loading && _posts != null)
               LinearProgressIndicator(
                 minHeight: 2,
                 color: theme.colorScheme.primary,
-                backgroundColor: theme.colorScheme.outlineVariant,
+                backgroundColor: Colors.transparent,
               ),
             Expanded(child: _buildBody(theme)),
           ],
@@ -142,120 +134,105 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _buildBody(ThemeData theme) {
-    // Initial load
     if (_loading && _posts == null) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
 
-    // Error
     if (_error != null) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: [
-          const SizedBox(height: 40),
-          Icon(Icons.cloud_off_outlined,
-              size: 36, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(height: 12),
-          Text(
-            _error!,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: OutlinedButton(
-              onPressed: _load,
-              child: const Text('Coba lagi'),
-            ),
-          ),
-        ],
-      );
+      return Center(child: Text('Gagal memuat: $_error'));
     }
 
     final posts = _posts ?? const <PublicPost>[];
 
-    // Empty state
     if (posts.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: [
-          const SizedBox(height: 40),
-          Icon(
-            _query.isEmpty
-                ? Icons.article_outlined
-                : Icons.search_off_outlined,
-            size: 36,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _query.isEmpty
-                ? 'Belum ada artikel.'
-                : 'Tidak ada hasil untuk "$_query".',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+      return Center(
+        child: Text(
+          _query.isEmpty
+              ? 'Belum ada artikel.'
+              : 'Tidak ada hasil untuk "$_query".',
+          style: const TextStyle(color: Colors.black54),
+        ),
       );
     }
 
-    // Data
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.separated(
+      child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.fromLTRB(
+          24,
+          8,
+          24,
+          120,
+        ), // Padding bawah untuk navbar
         itemCount: posts.length,
-        separatorBuilder: (_, __) =>
-            Divider(color: theme.colorScheme.outlineVariant),
-        itemBuilder: (context, i) => _PostTile(post: posts[i]),
+        itemBuilder: (context, i) => _SoftPostCard(post: posts[i]),
       ),
     );
   }
 }
 
-class _PostTile extends StatelessWidget {
+// --- Kartu Artikel Soft UI ---
+class _SoftPostCard extends StatelessWidget {
   final PublicPost post;
-  const _PostTile({required this.post});
+  const _SoftPostCard({required this.post});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
-      onTap: () => Navigator.of(context)
-          .pushNamed(AppRouting.detail, arguments: post.id),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+    return GestureDetector(
+      onTap: () =>
+          Navigator.of(context)
+              .pushNamed(AppRouting.detail, arguments: post.id),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               post.title,
-              style: theme.textTheme.headlineMedium
-                  ?.copyWith(fontSize: 20, height: 1.3),
+              style: theme.textTheme.titleLarge?.copyWith(height: 1.3),
             ),
             if (post.tags.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
+                spacing: 8,
+                runSpacing: 8,
                 children: post.tags
-                    .map((t) => Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                                color: theme.colorScheme.outlineVariant),
-                            borderRadius: BorderRadius.circular(6),
+                    .map(
+                      (t) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF0EB), // Warna peach soft
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          t,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: const Color(
+                              0xFFD87A59,
+                            ), // Warna teks oranye redup
+                            fontWeight: FontWeight.w600,
                           ),
-                          child: Text(t, style: theme.textTheme.labelSmall),
-                        ))
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ],
