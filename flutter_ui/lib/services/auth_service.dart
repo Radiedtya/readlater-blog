@@ -237,6 +237,59 @@ class AuthService {
     }
     return body['message'] as String?;
   }
+
+  static Future<User> updateProfile({
+    String? name,
+    String? email,
+    String? currentPassword,
+    String? newPassword,
+    String? newPasswordConfirmation,
+  }) async {
+    final uri = Uri.parse('${ApiConstant.baseUrl}${ApiConstant.updateProfile}');
+    debugPrint('→ PUT $uri');
+
+    final payload = <String, dynamic>{
+      if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+      if (newPassword != null && newPassword.isNotEmpty) ...{
+        'current_password': currentPassword ?? '',
+        'password': newPassword,
+        'password_confirmation': newPasswordConfirmation ?? '',
+      },
+    };
+
+    late final http.Response res;
+    try {
+      res = await http.put(
+        uri,
+        headers: await authHeaders(),
+        body: jsonEncode(payload),
+      );
+    } catch (e) {
+      debugPrint('✗ Network error: $e');
+      throw AuthException('Tidak dapat terhubung ke server.');
+    }
+
+    debugPrint('← status: ${res.statusCode}');
+    debugPrint('← body: ${res.body}');
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw AuthException('Response server tidak valid.');
+    }
+
+    if (res.statusCode != 200) {
+      throw AuthException(_extractMessage(body) ?? 'Gagal memperbarui profil.');
+    }
+
+    final userJson = _extractUserJson(body);
+    if (userJson == null) {
+      throw AuthException('Data user tidak ditemukan di response.');
+    }
+    return User.fromJson(userJson);
+  }
 }
 
 class AuthException implements Exception {

@@ -23,6 +23,66 @@ class AuthController extends Controller
     }
 
     /**
+     * PUT /api/user
+     * Update profil user yang sedang login (nama, email, dan/atau kata sandi).
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'name'             => 'sometimes|required|string|max:255',
+            'email'            => 'sometimes|required|email|max:255|unique:users,email,' . $user->id,
+            'current_password' => 'required_with:password|string',
+            'password'         => 'sometimes|required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        // Verifikasi kata sandi lama kalau user mau ganti password
+        if ($request->filled('password')) {
+            if (! Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'message' => 'Kata sandi saat ini salah.',
+                    'errors'  => [
+                        'current_password' => ['Kata sandi saat ini salah.'],
+                    ],
+                ], 422);
+            }
+        }
+
+        $data = [];
+        if ($request->filled('name')) {
+            $data['name'] = $request->name;
+        }
+        if ($request->filled('email')) {
+            $data['email'] = $request->email;
+        }
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        if (empty($data)) {
+            return response()->json([
+                'message' => 'Tidak ada perubahan.',
+                'data'    => $user,
+            ]);
+        }
+
+        $user->update($data);
+
+        return response()->json([
+            'message' => 'Profil diperbarui.',
+            'data'    => $user->fresh(),
+        ]);
+    }
+
+    /**
      * POST /api/register
      * Daftarkan user baru & langsung terbitkan token Sanctum.
      */

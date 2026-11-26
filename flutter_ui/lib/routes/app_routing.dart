@@ -7,12 +7,14 @@ import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/splash_screen.dart';
+import '../screens/edit_profile_screen.dart';
 
 class AppRouting {
   static const String splash = '/';
   static const String login = '/login';
   static const String register = '/register';
   static const String home = '/home';
+  static const String editProfile = '/profile-edit';
   static const String detail = '/detail';
   static const String bookmarkForm = '/bookmark-form';
 
@@ -26,6 +28,9 @@ class AppRouting {
 
       case register:
         return MaterialPageRoute(builder: (_) => const RegisterScreen());
+
+      case editProfile:
+        return MaterialPageRoute(builder: (_) => const EditProfileScreen());
 
       case home:
         return MaterialPageRoute(builder: (_) => const HomeScreen());

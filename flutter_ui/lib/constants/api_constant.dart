@@ -22,6 +22,7 @@ class ApiConstant {
   static const String login = '/api/login';
   static const String logout = '/api/logout';
   static const String me = '/api/user';
+  static const String updateProfile = '/api/user';
 
   // ---- Topics ----
   static const String topics = '/api/topics';
