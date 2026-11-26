@@ -1,4 +1,6 @@
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,6 +10,7 @@ import '../models/user.dart';
 class AuthService {
   static const _tokenKey = 'auth_token';
 
+  // ---------- token storage ----------
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
@@ -37,59 +40,124 @@ class AuthService {
     };
   }
 
+  // ---------- login ----------
   static Future<User> login({
     required String email,
     required String password,
   }) async {
-    final res = await http.post(
-      Uri.parse('${ApiConstant.baseUrl}${ApiConstant.login}'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'email': email, 'password': password}),
-    );
+    final uri = Uri.parse('${ApiConstant.baseUrl}${ApiConstant.login}');
+    debugPrint('→ POST $uri');
+    debugPrint('  body: {email: ${email.trim()}}');
 
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    if (res.statusCode == 200 && body['token'] != null) {
-      await _saveToken(body['token'] as String);
-      return User.fromJson(body['data'] as Map<String, dynamic>);
+    late final http.Response res;
+    try {
+      res = await http.post(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'email': email.trim(), 'password': password}),
+      );
+    } catch (e) {
+      debugPrint('✗ Network error: $e');
+      throw AuthException('Tidak dapat terhubung ke server.');
     }
-    throw AuthException(
-      _extractMessage(body) ?? 'Login gagal (${res.statusCode})',
-    );
+
+    debugPrint('← status: ${res.statusCode}');
+    debugPrint('← body: ${res.body}');
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw AuthException('Response server tidak valid.');
+    }
+
+    if (res.statusCode != 200) {
+      throw AuthException(
+        _extractMessage(body) ?? 'Login gagal (${res.statusCode})',
+      );
+    }
+
+    final token = _extractToken(body);
+    if (token == null) {
+      throw AuthException(
+        'Login berhasil tetapi token tidak ditemukan di response. '
+        'Cek bentuk response di console.',
+      );
+    }
+    await _saveToken(token);
+
+    final userJson = _extractUserJson(body);
+    if (userJson == null) {
+      throw AuthException('Data user tidak ditemukan di response.');
+    }
+
+    debugPrint('✓ Token tersimpan (${token.length} char) & user parsed');
+    return User.fromJson(userJson);
   }
 
+  // ---------- register ----------
   static Future<User> register({
     required String name,
     required String email,
     required String password,
     required String passwordConfirmation,
   }) async {
-    final res = await http.post(
-      Uri.parse('${ApiConstant.baseUrl}${ApiConstant.register}'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-        'password_confirmation': passwordConfirmation,
-      }),
-    );
+    final uri = Uri.parse('${ApiConstant.baseUrl}${ApiConstant.register}');
+    debugPrint('→ POST $uri');
 
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    if (res.statusCode == 201 && body['token'] != null) {
-      await _saveToken(body['token'] as String);
-      return User.fromJson(body['data'] as Map<String, dynamic>);
+    late final http.Response res;
+    try {
+      res = await http.post(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'name': name.trim(),
+          'email': email.trim(),
+          'password': password,
+          'password_confirmation': passwordConfirmation,
+        }),
+      );
+    } catch (e) {
+      debugPrint('✗ Network error: $e');
+      throw AuthException('Tidak dapat terhubung ke server.');
     }
-    throw AuthException(
-      _extractMessage(body) ?? 'Registrasi gagal (${res.statusCode})',
-    );
+
+    debugPrint('← status: ${res.statusCode}');
+    debugPrint('← body: ${res.body}');
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw AuthException('Response server tidak valid.');
+    }
+
+    if (res.statusCode != 201 && res.statusCode != 200) {
+      throw AuthException(
+        _extractMessage(body) ?? 'Registrasi gagal (${res.statusCode})',
+      );
+    }
+
+    final token = _extractToken(body);
+    if (token == null) {
+      throw AuthException('Registrasi berhasil tetapi token tidak ditemukan.');
+    }
+    await _saveToken(token);
+
+    final userJson = _extractUserJson(body);
+    if (userJson == null) {
+      throw AuthException('Data user tidak ditemukan di response.');
+    }
+    return User.fromJson(userJson);
   }
 
+  // ---------- me / logout ----------
   static Future<User?> me() async {
     final token = await getToken();
     if (token == null || token.isEmpty) return null;
@@ -98,10 +166,10 @@ class AuthService {
       Uri.parse('${ApiConstant.baseUrl}${ApiConstant.me}'),
       headers: await authHeaders(),
     );
-
     if (res.statusCode == 200) {
       final body = jsonDecode(res.body) as Map<String, dynamic>;
-      return User.fromJson(body['data'] as Map<String, dynamic>);
+      final userJson = _extractUserJson(body);
+      if (userJson != null) return User.fromJson(userJson);
     }
     return null;
   }
@@ -118,8 +186,48 @@ class AuthService {
     await clearToken();
   }
 
+  // ---------- extractors ----------
+  static String? _extractToken(Map<String, dynamic> body) {
+    if (body['token'] is String && (body['token'] as String).isNotEmpty) {
+      return body['token'] as String;
+    }
+    if (body['access_token'] is String) {
+      return body['access_token'] as String;
+    }
+    final data = body['data'];
+    if (data is Map<String, dynamic>) {
+      if (data['token'] is String && (data['token'] as String).isNotEmpty) {
+        return data['token'] as String;
+      }
+      if (data['access_token'] is String) {
+        return data['access_token'] as String;
+      }
+    }
+    return null;
+  }
+
+  static Map<String, dynamic>? _extractUserJson(Map<String, dynamic> body) {
+    final data = body['data'];
+    if (data is Map<String, dynamic>) {
+      // bentuk: { data: { id, name, email } }
+      if (data['id'] != null) return data;
+      // bentuk: { data: { user: { id, ... } } }
+      final nestedUser = data['user'];
+      if (nestedUser is Map<String, dynamic> && nestedUser['id'] != null) {
+        return nestedUser;
+      }
+    }
+    // bentuk: { user: { id, ... } }
+    final user = body['user'];
+    if (user is Map<String, dynamic> && user['id'] != null) {
+      return user;
+    }
+    // bentuk: body langsung user
+    if (body['id'] != null) return body;
+    return null;
+  }
+
   static String? _extractMessage(Map<String, dynamic> body) {
-    // Laravel validation: { message, errors: { field: [msg, ...] } }
     final errors = body['errors'];
     if (errors is Map && errors.isNotEmpty) {
       final firstVal = errors[errors.keys.first];

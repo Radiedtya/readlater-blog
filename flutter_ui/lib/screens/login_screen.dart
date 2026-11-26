@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../routes/app_routing.dart';
@@ -26,22 +27,56 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_loading) return;
+
+    if (!_formKey.currentState!.validate()) {
+      debugPrint('✗ Form validasi gagal');
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
     setState(() {
       _loading = true;
       _error = null;
     });
+
     try {
-      await AuthService.login(
+      final user = await AuthService.login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed(AppRouting.home);
+      debugPrint('✓ Login sebagai: ${user.name} <${user.email}>');
+
+      if (!mounted) {
+        debugPrint('⚠ Widget tidak mounted, batal navigasi');
+        return;
+      }
+
+      // Pastikan token benar-benar tersimpan sebelum pindah
+      final savedToken = await AuthService.getToken();
+      debugPrint(
+        '✓ Verifikasi token: ${savedToken == null ? "KOSONG" : "${savedToken.length} char"}',
+      );
+
+      if (savedToken == null || savedToken.isEmpty) {
+        throw AuthException('Token tidak tersimpan. Coba login ulang.');
+      }
+
+      debugPrint('→ Navigasi ke ${AppRouting.home}');
+      Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+        AppRouting.home,
+        (route) => false,
+      );
+      debugPrint('✓ pushNamedAndRemoveUntil selesai');
     } on AuthException catch (e) {
+      debugPrint('✗ AuthException: ${e.message}');
+      if (!mounted) return;
       setState(() => _error = e.message);
-    } catch (_) {
-      setState(() => _error = 'Tidak dapat terhubung ke server.');
+    } catch (e, st) {
+      debugPrint('✗ Error tak terduga: $e');
+      debugPrint('$st');
+      if (!mounted) return;
+      setState(() => _error = 'Terjadi kesalahan: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -50,6 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -59,8 +95,11 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.bookmark_added_outlined,
-                    size: 36, color: theme.colorScheme.primary),
+                Icon(
+                  Icons.bookmark_added_outlined,
+                  size: 36,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(height: 24),
                 Text('Masuk', style: theme.textTheme.displayMedium),
                 const SizedBox(height: 8),
@@ -71,56 +110,84 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
+
+                // ---- Email ----
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.email],
                   decoration: const InputDecoration(
                     labelText: 'Email',
+                    hintText: 'nama@email.com',
                     prefixIcon: Icon(Icons.alternate_email),
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Email wajib diisi';
-                    if (!v.contains('@')) return 'Format email tidak valid';
+                    final value = (v ?? '').trim();
+                    if (value.isEmpty) return 'Email wajib diisi';
+                    if (value.length > 255) return 'Email terlalu panjang';
+                    final regex = RegExp(r'^[\w\.\-+]+@[\w\-]+(\.[\w\-]+)+$');
+                    if (!regex.hasMatch(value)) {
+                      return 'Format email tidak valid';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
+
+                // ---- Password ----
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscure,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _submit(),
                   decoration: InputDecoration(
                     labelText: 'Kata sandi',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscure
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined),
+                      icon: Icon(
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Kata sandi wajib diisi' : null,
+                  validator: (v) {
+                    final value = v ?? '';
+                    if (value.isEmpty) return 'Kata sandi wajib diisi';
+                    if (value.length < 8) return 'Minimal 8 karakter';
+                    return null;
+                  },
                 ),
+
+                // ---- Error ----
                 if (_error != null) ...[
                   const SizedBox(height: 16),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.error_outline,
-                          size: 18, color: theme.colorScheme.error),
+                      Icon(
+                        Icons.error_outline,
+                        size: 18,
+                        color: theme.colorScheme.error,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _error!,
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: theme.colorScheme.error),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ],
+
                 const SizedBox(height: 28),
+
+                // ---- Submit ----
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
@@ -133,16 +200,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Text('Masuk'),
                   ),
                 ),
+
                 const SizedBox(height: 24),
                 Center(
                   child: TextButton(
-                    onPressed: () => Navigator.of(context)
-                        .pushReplacementNamed(AppRouting.register),
+                    onPressed: _loading
+                        ? null
+                        : () => Navigator.of(context)
+                            .pushReplacementNamed(AppRouting.register),
                     child: const Text('Belum punya akun? Daftar'),
                   ),
                 ),

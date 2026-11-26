@@ -6,75 +6,106 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
+    /**
+     * GET /api/user
+     * Kembalikan data user yang sedang login.
+     */
     public function user(Request $request): JsonResponse
     {
         return response()->json([
             'data' => $request->user(),
         ]);
     }
-    
-    public function register(Request $request)
+
+    /**
+     * POST /api/register
+     * Daftarkan user baru & langsung terbitkan token Sanctum.
+     */
+    public function register(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|max:255|unique:users',
-            'password' => 'required|string|min:8'
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors());
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors'  => $validator->errors(),
+            ], 422);
         }
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password)
+            'name'     => $request->name,
+            'email'    => $request->email,
+            'password' => Hash::make($request->password),
         ]);
-
-        // $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'data' => $user,
-            // 'access_token' => $token,
-            // 'token_type' => 'Bearer'
-        ]);
-    }
-
-    public function login(Request $request)
-    {
-        if (! Auth::attempt($request->only('email', 'password'))) {
-            return response()->json([
-                'message' => 'Unauthorized'
-            ], 401);
-        }
-
-        $user = User::where('email', $request->email)->firstOrFail();
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Login success',
-            'access_token' => $token,
-            'token_type' => 'Bearer'
+            'message'    => 'Register success',
+            'data'       => $user,
+            'token'      => $token,
+            'token_type' => 'Bearer',
+        ], 201);
+    }
+
+    /**
+     * POST /api/login
+     * Verifikasi kredensial & terbitkan token.
+     */
+    public function login(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email'    => 'required|email',
+            'password' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'Email atau kata sandi salah.',
+            ], 401);
+        }
+
+        // Opsional: komentari baris di bawah kalau mau multi-device login
+        // $user->tokens()->delete();
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message'    => 'Login success',
+            'data'       => $user,
+            'token'      => $token,
+            'token_type' => 'Bearer',
         ]);
     }
 
-    public function logout()
+    /**
+     * POST /api/logout
+     * Cabut token yang sedang dipakai.
+     */
+    public function logout(Request $request): JsonResponse
     {
-        $user = Auth::user();
-
-        if ($user instanceof User) {
-            $user->tokens()->delete();
-        }
+        $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'logout success'
+            'message' => 'logout success',
         ]);
     }
 }
