@@ -6,6 +6,7 @@ import '../models/topic.dart';
 import '../services/crud_service.dart';
 import '../services/public_api_service.dart';
 import '../state/bookmark_events.dart';
+import '../widgets/app_brand.dart';
 
 class DetailScreen extends StatefulWidget {
   final int postId;
@@ -80,10 +81,12 @@ class _DetailScreenState extends State<DetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
+        title: const AppBrand(),
         actions: [
           IconButton(
             icon: Icon(
@@ -97,81 +100,123 @@ class _DetailScreenState extends State<DetailScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<PublicPostDetail>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(strokeWidth: 2),
-            );
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('Gagal memuat: ${snapshot.error}'),
-              ),
-            );
-          }
-          final post = snapshot.data!;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  post.title,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontSize: 28,
-                    height: 1.25,
-                  ),
-                ),
-                if (post.tags.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: post.tags
-                        .map(
-                          (t) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: theme.colorScheme.outlineVariant,
-                              ),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(t, style: theme.textTheme.labelSmall),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    _Meta(
-                      icon: Icons.visibility_outlined,
-                      label: '${post.views}',
-                    ),
-                    const SizedBox(width: 16),
-                    _Meta(icon: Icons.favorite_border, label: '${post.likes}'),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFFFF0EB),
+                    Color(0xFFF3EFFF),
+                    Color(0xFFF7F6F2),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Divider(color: theme.colorScheme.outlineVariant),
-                const SizedBox(height: 20),
-                Text(
-                  post.body,
-                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.7),
-                ),
-              ],
+              ),
             ),
-          );
-        },
+          ),
+          FutureBuilder<PublicPostDetail>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Gagal memuat: ${snapshot.error}'),
+                  ),
+                );
+              }
+              final post = snapshot.data!;
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      post.title,
+                      style: theme.textTheme.displaySmall?.copyWith(
+                        fontSize: 30,
+                        height: 1.25,
+                      ),
+                    ),
+                    if (post.tags.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: post.tags
+                            .map(
+                              (tag) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF0EB),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  tag,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: const Color(0xFFD87A59),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        _Meta(
+                          icon: Icons.visibility_outlined,
+                          label: '${post.views}',
+                        ),
+                        const SizedBox(width: 16),
+                        _Meta(
+                          icon: Icons.favorite_border,
+                          label: '${post.likes}',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        post.body,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          height: 1.7,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -345,8 +390,16 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          color: Colors.white.withOpacity(0.96),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(color: Colors.white, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 24,
+              offset: const Offset(0, -8),
+            ),
+          ],
         ),
         child: SafeArea(
           top: false,

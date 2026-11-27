@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../routes/app_routing.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_brand.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -100,25 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               alignment: Alignment.topCenter,
               child: Padding(
                 padding: const EdgeInsets.only(top: 30),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.bookmark_added,
-                      color: const Color(0xFFD87A59),
-                      size: 28,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'ReadLater',
-                      style: GoogleFonts.fraunces(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1E1E1E),
-                      ),
-                    ),
-                  ],
-                ),
+                child: const AppBrand(),
               ),
             ),
           ),

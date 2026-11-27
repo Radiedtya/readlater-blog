@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/custom_bottom_nav.dart';
+import '../widgets/app_brand.dart';
 import 'bookmarks_screen.dart';
 import 'explore_screen.dart';
 import 'profile_screen.dart';
@@ -40,8 +41,24 @@ class _HomeScreenState extends State<HomeScreen> {
           // 1. Background Gradasi
           Container(decoration: _gradientBackground),
 
-          // 2. Konten Halaman
-          IndexedStack(index: _index, children: _pages),
+          // 2. Header aplikasi dan konten halaman
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 12, 24, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: AppBrand(),
+                  ),
+                ),
+                Expanded(
+                  child: IndexedStack(index: _index, children: _pages),
+                ),
+              ],
+            ),
+          ),
 
           // 3. Custom Navbar di paling bawah
           Positioned(

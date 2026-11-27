@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/bookmark.dart';
-import '../models/topic.dart';
 import '../routes/app_routing.dart';
 import '../services/crud_service.dart';
 import '../state/bookmark_events.dart';
@@ -21,7 +20,6 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   final _searchController = TextEditingController();
   Timer? _debounce;
 
-  List<Topic> _topics = [];
   List<Bookmark>? _bookmarks;
   bool _loading = true;
   String? _error;
@@ -55,14 +53,12 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
       _error = null;
     });
     try {
-      final results = await Future.wait([
-        CrudService.getTopics(),
-        CrudService.getBookmarks(q: _query.isEmpty ? null : _query),
-      ]);
+      final bookmarks = await CrudService.getBookmarks(
+        q: _query.isEmpty ? null : _query,
+      );
       if (!mounted) return;
       setState(() {
-        _topics = results[0] as List<Topic>;
-        _bookmarks = results[1] as List<Bookmark>;
+        _bookmarks = bookmarks;
         _loading = false;
       });
     } catch (e) {
@@ -105,14 +101,9 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     _load();
   }
 
-  Future<void> _openForm({Bookmark? bookmark, int? preselectedTopicId}) async {
-    final result = await Navigator.of(context).pushNamed(
-      AppRouting.bookmarkForm,
-      arguments: {
-        'bookmark': bookmark,
-        'preselectedTopicId': preselectedTopicId,
-      },
-    );
+  Future<void> _openForm({Bookmark? bookmark}) async {
+    final result = await Navigator.of(context)
+        .pushNamed(AppRouting.bookmarkForm, arguments: {'bookmark': bookmark});
     debugPrint('← Form ditutup, result=$result');
     if (!mounted) return;
     if (result == true) await _load();
@@ -161,13 +152,19 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: Colors.transparent, // Biar gradasi HomeScreen tembus
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openForm(),
-        backgroundColor: const Color(0xFF1E1E1E),
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 104),
+        child: FloatingActionButton(
+          onPressed: () => _openForm(),
+          backgroundColor: const Color(0xFF1E1E1E),
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,13 +240,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     final bookmarks = _bookmarks ?? const <Bookmark>[];
 
     if (bookmarks.isEmpty) {
-      return _EmptyState(
-        isSearch: _query.isNotEmpty,
-        query: _query,
-        onAdd: () => _openForm(
-          preselectedTopicId: _topics.isNotEmpty ? _topics.first.id : null,
-        ),
-      );
+      return _EmptyState(isSearch: _query.isNotEmpty, query: _query);
     }
 
     return RefreshIndicator(
@@ -277,20 +268,15 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
 class _EmptyState extends StatelessWidget {
   final bool isSearch;
   final String query;
-  final VoidCallback onAdd;
 
-  const _EmptyState({
-    required this.isSearch,
-    required this.query,
-    required this.onAdd,
-  });
+  const _EmptyState({required this.isSearch, required this.query});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.fromLTRB(32, 32, 32, 140),
       children: [
         const SizedBox(height: 40),
         Icon(
@@ -312,16 +298,6 @@ class _EmptyState extends StatelessWidget {
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
         ),
-        if (!isSearch) ...[
-          const SizedBox(height: 20),
-          Center(
-            child: FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Tambah bookmark'),
-            ),
-          ),
-        ],
       ],
     );
   }

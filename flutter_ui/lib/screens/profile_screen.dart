@@ -37,8 +37,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _openEdit() async {
-    final result =
-        await Navigator.of(context).pushNamed(AppRouting.editProfile);
+    final result = await Navigator.of(context)
+        .pushNamed(AppRouting.editProfile);
     debugPrint('← Edit profil ditutup, result=$result');
     if (result == true) await _refresh();
   }
@@ -48,8 +48,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Keluar dari akun?'),
-        content:
-            const Text('Kamu perlu masuk kembali untuk mengakses bookmark.'),
+        content: const Text(
+          'Kamu perlu masuk kembali untuk mengakses bookmark.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -65,16 +66,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (ok != true) return;
     await AuthService.logout();
     if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRouting.login,
-      (route) => false,
-    );
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil(AppRouting.login, (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -84,11 +84,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2));
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
               }
               final user = snapshot.data;
               return ListView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
                 children: [
                   Text('Profil', style: theme.textTheme.displaySmall),
                   const SizedBox(height: 24),
@@ -97,23 +98,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      border:
-                          Border.all(color: theme.colorScheme.outlineVariant),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white.withOpacity(0.7),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
                         CircleAvatar(
-                          radius: 26,
-                          backgroundColor:
-                              theme.colorScheme.surfaceContainerHighest,
+                          radius: 30,
+                          backgroundColor: const Color(0xFFFFF0EB),
                           child: Text(
                             (user != null && user.name.isNotEmpty)
                                 ? user.name[0].toUpperCase()
                                 : '?',
-                            style: theme.textTheme.headlineMedium
-                                ?.copyWith(fontSize: 22),
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontSize: 24,
+                              color: const Color(0xFFD87A59),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -128,6 +136,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 user?.email ?? '-',
+                                overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
@@ -142,26 +151,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // ==== Aksi ====
-                  OutlinedButton.icon(
-                    onPressed: _openEdit,
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('Edit profil'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: FilledButton.icon(
+                      onPressed: _openEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Edit profil'),
                     ),
                   ),
 
                   const SizedBox(height: 12),
 
-                  OutlinedButton.icon(
-                    onPressed: _logout,
-                    icon: const Icon(Icons.logout, size: 18),
-                    label: const Text('Keluar'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      foregroundColor: theme.colorScheme.error,
-                      side: BorderSide(
-                        color: theme.colorScheme.error.withValues(alpha: 0.4),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton.icon(
+                      onPressed: _logout,
+                      icon: const Icon(Icons.logout, size: 18),
+                      label: const Text('Keluar'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                        side: BorderSide(
+                          color: theme.colorScheme.error.withValues(alpha: 0.4),
+                        ),
                       ),
                     ),
                   ),
