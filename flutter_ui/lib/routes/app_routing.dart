@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/bookmark.dart';
+import '../screens/bookmark_detail_screen.dart';
 import '../screens/bookmark_form_screen.dart';
 import '../screens/detail_screen.dart';
 import '../screens/home_screen.dart';
@@ -16,6 +17,7 @@ class AppRouting {
   static const String home = '/home';
   static const String editProfile = '/profile-edit';
   static const String detail = '/detail';
+  static const String bookmarkDetail = '/bookmark-detail';
   static const String bookmarkForm = '/bookmark-form';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
@@ -38,6 +40,12 @@ class AppRouting {
       case detail:
         final id = settings.arguments as int;
         return MaterialPageRoute(builder: (_) => DetailScreen(postId: id));
+
+      case bookmarkDetail:
+        final bookmark = settings.arguments as Bookmark;
+        return MaterialPageRoute(
+          builder: (_) => BookmarkDetailScreen(bookmark: bookmark),
+        );
 
       case bookmarkForm:
         final args = settings.arguments as Map<String, dynamic>;

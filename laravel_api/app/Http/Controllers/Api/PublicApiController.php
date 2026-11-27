@@ -46,6 +46,7 @@ class PublicApiController extends Controller
         $data = collect($res->json('posts', []))->map(fn ($p) => [
             'id'    => $p['id'],
             'title' => $p['title'],
+            'body'  => $p['body'] ?? '',
             'tags'  => $p['tags'] ?? [],
         ]);
 

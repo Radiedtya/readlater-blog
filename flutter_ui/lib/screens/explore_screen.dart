@@ -88,85 +88,72 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final posts = _posts ?? const <PublicPost>[];
+
     return Scaffold(
       backgroundColor: Colors.transparent, // Transparan agar gradasi terlihat
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Jelajah', style: theme.textTheme.displaySmall),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Artikel pilihan dari komunitas',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.black54,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+            children: [
+              Text('Jelajah', style: theme.textTheme.displaySmall),
+              const SizedBox(height: 4),
+              Text(
+                'Artikel pilihan dari komunitas',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SearchField(
+                controller: _searchController,
+                hintText: 'Cari artikel',
+                onChanged: _onSearchChanged,
+                onSubmitted: _onSearchChanged,
+                onClear: _searchController.text.isEmpty ? null : _clearSearch,
+              ),
+              if (_loading && _posts != null) ...[
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  minHeight: 2,
+                  color: theme.colorScheme.primary,
+                  backgroundColor: Colors.transparent,
+                ),
+              ],
+              if (_loading && _posts == null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 48),
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 48),
+                  child: Center(child: Text('Gagal memuat: $_error')),
+                )
+              else if (posts.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 48),
+                  child: Center(
+                    child: Text(
+                      _query.isEmpty
+                          ? 'Belum ada artikel.'
+                          : 'Tidak ada hasil untuk "$_query".',
+                      style: const TextStyle(color: Colors.black54),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  SearchField(
-                    controller: _searchController,
-                    hintText: 'Cari artikel',
-                    onChanged: _onSearchChanged,
-                    onSubmitted: (v) => _onSearchChanged(v),
-                    onClear: _searchController.text.isEmpty
-                        ? null
-                        : _clearSearch,
-                  ),
-                ],
-              ),
-            ),
-            if (_loading && _posts != null)
-              LinearProgressIndicator(
-                minHeight: 2,
-                color: theme.colorScheme.primary,
-                backgroundColor: Colors.transparent,
-              ),
-            Expanded(child: _buildBody(theme)),
-          ],
+                )
+              else ...[
+                const SizedBox(height: 24),
+                ...posts.map((post) => _SoftPostCard(post: post)),
+              ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildBody(ThemeData theme) {
-    if (_loading && _posts == null) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-    }
-
-    if (_error != null) {
-      return Center(child: Text('Gagal memuat: $_error'));
-    }
-
-    final posts = _posts ?? const <PublicPost>[];
-
-    if (posts.isEmpty) {
-      return Center(
-        child: Text(
-          _query.isEmpty
-              ? 'Belum ada artikel.'
-              : 'Tidak ada hasil untuk "$_query".',
-          style: const TextStyle(color: Colors.black54),
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          24,
-          8,
-          24,
-          120,
-        ), // Padding bawah untuk navbar
-        itemCount: posts.length,
-        itemBuilder: (context, i) => _SoftPostCard(post: posts[i]),
       ),
     );
   }
@@ -205,6 +192,16 @@ class _SoftPostCard extends StatelessWidget {
             Text(
               post.title,
               style: theme.textTheme.titleLarge?.copyWith(height: 1.3),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              post.summary,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.black54,
+                height: 1.5,
+              ),
             ),
             if (post.tags.isNotEmpty) ...[
               const SizedBox(height: 12),

@@ -109,6 +109,13 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     if (result == true) await _load();
   }
 
+  Future<void> _openBookmark(Bookmark bookmark) async {
+    final result = await Navigator.of(context)
+        .pushNamed(AppRouting.bookmarkDetail, arguments: bookmark);
+    if (!mounted) return;
+    if (result == true) await _load();
+  }
+
   Future<void> _delete(Bookmark bookmark) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -166,98 +173,111 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Tersimpan', style: theme.textTheme.displaySmall),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Koleksi pribadimu',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.black54,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Tersimpan', style: theme.textTheme.displaySmall),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Koleksi pribadimu',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      SearchField(
+                        controller: _searchController,
+                        hintText: 'Cari bookmark',
+                        onChanged: _onSearchChanged,
+                        onSubmitted: _onSearchSubmitted,
+                        onClear: _searchController.text.isEmpty
+                            ? null
+                            : _clearSearch,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (_loading && _bookmarks != null)
+                SliverToBoxAdapter(
+                  child: LinearProgressIndicator(
+                    minHeight: 2,
+                    color: theme.colorScheme.primary,
+                    backgroundColor: Colors.transparent,
+                  ),
+                ),
+              if (_loading && _bookmarks == null)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (_error != null)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.cloud_off_outlined,
+                            size: 36,
+                            color: Colors.black38,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton(
+                            onPressed: _load,
+                            child: const Text('Coba lagi'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  SearchField(
-                    controller: _searchController,
-                    hintText: 'Cari bookmark',
-                    onChanged: _onSearchChanged,
-                    onSubmitted: _onSearchSubmitted,
-                    onClear: _searchController.text.isEmpty
-                        ? null
-                        : _clearSearch,
+                )
+              else if ((_bookmarks ?? const <Bookmark>[]).isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _EmptyState(
+                    isSearch: _query.isNotEmpty,
+                    query: _query,
                   ),
-                ],
-              ),
-            ),
-            if (_loading && _bookmarks != null)
-              LinearProgressIndicator(
-                minHeight: 2,
-                color: theme.colorScheme.primary,
-                backgroundColor: Colors.transparent,
-              ),
-            Expanded(child: _buildBody(theme)),
-          ],
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, i) {
+                      final bookmark = _bookmarks![i];
+                      return _BookmarkCard(
+                        bookmark: bookmark,
+                        onTap: () => _openBookmark(bookmark),
+                        onDelete: () => _delete(bookmark),
+                      );
+                    }, childCount: _bookmarks!.length),
+                  ),
+                ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildBody(ThemeData theme) {
-    if (_loading && _bookmarks == null) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-    }
-
-    if (_error != null) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: [
-          const SizedBox(height: 40),
-          const Icon(Icons.cloud_off_outlined, size: 36, color: Colors.black38),
-          const SizedBox(height: 12),
-          Text(
-            _error!,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: OutlinedButton(
-              onPressed: _load,
-              child: const Text('Coba lagi'),
-            ),
-          ),
-        ],
-      );
-    }
-
-    final bookmarks = _bookmarks ?? const <Bookmark>[];
-
-    if (bookmarks.isEmpty) {
-      return _EmptyState(isSearch: _query.isNotEmpty, query: _query);
-    }
-
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        // Padding bawah 120 agar tidak tertutup navbar melayang
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
-        itemCount: bookmarks.length,
-        itemBuilder: (context, i) {
-          final b = bookmarks[i];
-          return _BookmarkCard(
-            bookmark: b,
-            onTap: () => _openForm(bookmark: b),
-            onDelete: () => _delete(b),
-          );
-        },
       ),
     );
   }
@@ -274,31 +294,36 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(32, 32, 32, 140),
-      children: [
-        const SizedBox(height: 40),
-        Icon(
-          isSearch ? Icons.search_off_outlined : Icons.bookmark_border,
-          size: 40,
-          color: Colors.black38,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(32, 32, 32, 120),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSearch ? Icons.search_off_outlined : Icons.bookmark_border,
+              size: 40,
+              color: Colors.black38,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isSearch ? 'Tidak ada hasil' : 'Belum ada bookmark',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isSearch
+                  ? 'Tidak ada bookmark yang cocok dengan "$query".'
+                  : 'Simpan artikel atau catatan pentingmu di sini.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.black54,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        Text(
-          isSearch ? 'Tidak ada hasil' : 'Belum ada bookmark',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.headlineMedium,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          isSearch
-              ? 'Tidak ada bookmark yang cocok dengan "$query".'
-              : 'Simpan artikel atau catatan pentingmu di sini.',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
-        ),
-      ],
+      ),
     );
   }
 }
