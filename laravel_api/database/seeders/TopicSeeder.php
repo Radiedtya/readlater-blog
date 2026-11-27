@@ -16,7 +16,7 @@ class TopicSeeder extends Seeder
      */
     public function run(): void
     {
-        foreach (['Teknologi', 'Gaya Hidup', 'Bisnis'] as $name) {
+        foreach (['Teknologi', 'Gaya Hidup', 'Bisnis', 'Karir', 'Keuangan'] as $name) {
             Topic::firstOrCreate(
                 ['slug' => Str::slug($name)],
                 ['name' => $name]

@@ -1,11 +1,12 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 /// Konfigurasi base URL & endpoint API.
 ///
 /// Base URL otomatis menyesuaikan platform saat development:
 /// - Web / iOS Simulator  : http://127.0.0.1:8000
 /// - Android Emulator     : http://10.0.2.2:8000
-/// - Physical device      : ubah manual ke http://<IP-LAN-komputer>:8000
+/// - Physical device      : ubah manual ke `http://<IP-LAN-komputer>:8000`
 class ApiConstant {
   ApiConstant._();
 
@@ -23,6 +24,7 @@ class ApiConstant {
   static const String logout = '/api/logout';
   static const String me = '/api/user';
   static const String updateProfile = '/api/user';
+  static const String uploadProfileImage = '/api/user/avatar';
 
   // ---- Topics ----
   static const String topics = '/api/topics';

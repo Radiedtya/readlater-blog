@@ -290,6 +290,60 @@ class AuthService {
     }
     return User.fromJson(userJson);
   }
+
+  static Future<User> uploadProfileImage(Uint8List imageBytes) async {
+    final token = await getToken();
+    if (token == null || token.isEmpty) {
+      throw AuthException('Sesi login berakhir. Silakan masuk kembali.');
+    }
+
+    final request =
+        http.MultipartRequest(
+            'POST',
+            Uri.parse(
+              '${ApiConstant.baseUrl}${ApiConstant.uploadProfileImage}',
+            ),
+          )
+          ..headers.addAll({
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          })
+          ..files.add(
+            http.MultipartFile.fromBytes(
+              'avatar',
+              imageBytes,
+              filename: 'profile.png',
+            ),
+          );
+
+    late final http.Response response;
+    try {
+      response = await http.Response.fromStream(await request.send());
+    } catch (error) {
+      debugPrint('✗ Profile image upload failed: $error');
+      throw AuthException('Tidak dapat mengunggah foto. Periksa koneksi.');
+    }
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw AuthException('Response server tidak valid.');
+    }
+
+    if (response.statusCode != 200) {
+      throw AuthException(
+        _extractMessage(body) ??
+            'Gagal mengunggah foto (${response.statusCode}).',
+      );
+    }
+
+    final userJson = _extractUserJson(body);
+    if (userJson == null) {
+      throw AuthException('Data user tidak ditemukan di response.');
+    }
+    return User.fromJson(userJson);
+  }
 }
 
 class AuthException implements Exception {

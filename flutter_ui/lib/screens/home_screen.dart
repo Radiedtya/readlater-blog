@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../routes/app_routing.dart';
-import '../widgets/app_brand.dart';
+import '../widgets/app_header.dart';
 import '../widgets/custom_bottom_nav.dart';
-import '../widgets/editorial_visuals.dart';
 import 'bookmarks_screen.dart';
 import 'explore_screen.dart';
 import 'profile_screen.dart';
@@ -42,56 +41,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = switch (_index) {
-      0 => EditorialPalette.explore,
-      1 => EditorialPalette.bookmarks,
-      _ => EditorialPalette.profile,
-    };
-
     return Scaffold(
-      extendBody: true, // Biar background tembus ke bawah Navbar
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 450),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: palette.colors,
-                ),
-              ),
+      backgroundColor: const Color(0xFFF7F6F2),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const AppHeader(),
+            Expanded(
+              child: IndexedStack(index: _index, children: _pages),
             ),
-          ),
-
-          // 2. Header aplikasi dan konten halaman
-          SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(24, 12, 24, 8),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: AppBrand(),
-                  ),
-                ),
-                Expanded(
-                  child: IndexedStack(index: _index, children: _pages),
-                ),
-              ],
-            ),
-          ),
-
-          // 3. Custom Navbar di paling bawah
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: CustomBottomNav(currentIndex: _index, onTap: _navigateToTab),
-          ),
-        ],
+          ],
+        ),
+      ),
+      bottomNavigationBar: CustomBottomNav(
+        currentIndex: _index,
+        onTap: _navigateToTab,
       ),
     );
   }

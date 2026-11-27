@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 class CustomBottomNav extends StatelessWidget {
@@ -14,57 +12,32 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      {
-        'icon': Icons.explore_outlined,
-        'activeIcon': Icons.explore,
-        'label': 'Jelajah',
-      },
-      {
-        'icon': Icons.bookmark_border,
-        'activeIcon': Icons.bookmark,
-        'label': 'Tersimpan',
-      },
-      {
-        'icon': Icons.person_outline,
-        'activeIcon': Icons.person,
-        'label': 'Profil',
-      },
+    const items = [
+      (icon: Icons.explore_outlined, label: 'Jelajah'),
+      (icon: Icons.bookmark_border_rounded, label: 'Tersimpan'),
+      (icon: Icons.person_outline_rounded, label: 'Profil'),
     ];
 
     return Container(
-      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 18),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        color: Colors.white,
+        border: Border(top: BorderSide(color: const Color(0xFFEAE8E2))),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(40),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), // Efek kaca
-          child: Row(
-            children: List.generate(items.length, (index) {
-              final isActive = currentIndex == index;
-              return Expanded(
-                child: _NavBarItem(
-                  icon: isActive
-                      ? items[index]['activeIcon'] as IconData
-                      : items[index]['icon'] as IconData,
-                  label: items[index]['label'] as String,
-                  isActive: isActive,
-                  onTap: () => onTap(index),
-                ),
-              );
-            }),
-          ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: List.generate(items.length, (index) {
+            final isActive = currentIndex == index;
+            return Expanded(
+              child: _NavBarItem(
+                icon: items[index].icon,
+                label: items[index].label,
+                isActive: isActive,
+                onTap: () => onTap(index),
+              ),
+            );
+          }),
         ),
       ),
     );
@@ -90,41 +63,34 @@ class _NavBarItem extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutCubic,
-        width: double.infinity,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        height: 48,
         alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF1E1E1E) : Colors.transparent,
-          borderRadius: BorderRadius.circular(30),
+          color: isActive ? const Color(0xFFF1EFE9) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              color: isActive ? Colors.white : Colors.black54,
-              size: 22,
+              color: isActive
+                  ? const Color(0xFF292821)
+                  : const Color(0xFF858178),
+              size: 20,
             ),
-            // Animasi teks saat menu aktif
-            AnimatedSize(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              child: isActive
-                  ? Row(
-                      children: [
-                        const SizedBox(width: 6),
-                        Text(
-                          label,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive
+                    ? const Color(0xFF292821)
+                    : const Color(0xFF858178),
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                fontSize: 12,
+              ),
             ),
           ],
         ),

@@ -12,19 +12,30 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'profile_image'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens;
+    protected $appends = ['profile_image_url'];
 
+    /** @use HasFactory<UserFactory> */
+    use HasApiTokens, HasFactory, Notifiable;
 
     public function bookmarks(): HasMany
     {
         return $this->hasMany(Bookmark::class);
     }
-    
+
+    public function getProfileImageUrlAttribute(): ?string
+    {
+        return $this->profile_image
+            ? route('users.avatar', [
+                'user' => $this->getKey(),
+                'v' => substr(hash('sha256', $this->profile_image), 0, 12),
+            ])
+            : null;
+    }
+
     /**
      * Get the attributes that should be cast.
      *

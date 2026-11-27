@@ -1,10 +1,13 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/user.dart';
 import '../routes/app_routing.dart';
 import '../services/auth_service.dart';
+import '../services/user_profile_store.dart';
 import '../widgets/editorial_visuals.dart';
+import '../widgets/profile_avatar.dart';
+import '../widgets/profile_image_crop_dialog.dart';
 import '../widgets/reading_loader.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -17,16 +20,17 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<User?> _future;
   int _refreshCounter = 0;
+  bool _uploadingProfileImage = false;
 
   @override
   void initState() {
     super.initState();
-    _future = AuthService.me();
+    _future = UserProfileStore.instance.load();
   }
 
   Future<void> _refresh() async {
     if (!mounted) return;
-    final future = AuthService.me();
+    final future = UserProfileStore.instance.load();
     setState(() {
       _future = future;
       _refreshCounter++;
@@ -43,6 +47,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .pushNamed(AppRouting.editProfile);
     debugPrint('← Edit profil ditutup, result=$result');
     if (result == true) await _refresh();
+  }
+
+  Future<void> _pickProfileImage() async {
+    try {
+      final image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 512,
+        maxHeight: 512,
+      );
+      if (image == null) return;
+
+      if (!mounted) return;
+      final imageBytes = await image.readAsBytes();
+      if (!mounted) return;
+      final croppedImage = await showProfileImageCropDialog(
+        context,
+        imageBytes,
+      );
+      if (croppedImage == null || !mounted) return;
+
+      setState(() => _uploadingProfileImage = true);
+      final user = await AuthService.uploadProfileImage(croppedImage);
+      UserProfileStore.instance.update(user);
+      if (!mounted) return;
+      setState(() {
+        _future = Future.value(user);
+        _refreshCounter++;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto profil berhasil diperbarui.')),
+      );
+    } on AuthException catch (error) {
+      debugPrint('Gagal mengunggah foto profil: ${error.message}');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error, stackTrace) {
+      debugPrint('Gagal memperbarui foto profil: $error\n$stackTrace');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Foto profil gagal diperbarui: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingProfileImage = false);
+    }
   }
 
   Future<void> _logout() async {
@@ -116,7 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withValues(alpha: 0.7),
                               border: Border.all(
                                 color: Colors.white,
                                 width: 1.5,
@@ -124,7 +174,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
+                                  color: Colors.black.withValues(alpha: 0.03),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -132,19 +182,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             child: Row(
                               children: [
-                                CircleAvatar(
-                                  radius: 30,
-                                  backgroundColor: const Color(0xFFFFF0EB),
-                                  child: Text(
-                                    (user != null && user.name.isNotEmpty)
-                                        ? user.name[0].toUpperCase()
-                                        : '?',
-                                    style: theme.textTheme.headlineMedium
-                                        ?.copyWith(
-                                          fontSize: 24,
-                                          color: const Color(0xFFD87A59),
+                                Stack(
+                                  children: [
+                                    ProfileAvatar(
+                                      radius: 30,
+                                      imageUrl: user?.profileImageUrl,
+                                      initials:
+                                          (user != null && user.name.isNotEmpty)
+                                          ? user.name[0].toUpperCase()
+                                          : '?',
+                                      onTap: _uploadingProfileImage
+                                          ? null
+                                          : _pickProfileImage,
+                                    ),
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
+                                      child: IgnorePointer(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF292821),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 1.5,
+                                            ),
+                                          ),
+                                          child: _uploadingProfileImage
+                                              ? const SizedBox(
+                                                  width: 12,
+                                                  height: 12,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 1.5,
+                                                        color: Colors.white,
+                                                      ),
+                                                )
+                                              : const Icon(
+                                                  Icons.camera_alt_rounded,
+                                                  color: Colors.white,
+                                                  size: 12,
+                                                ),
                                         ),
-                                  ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(

@@ -7,10 +7,85 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AuthController extends Controller
 {
+    public function showAvatar(User $user): StreamedResponse
+    {
+        abort_unless(
+            $user->profile_image
+                && Storage::disk('public')->exists($user->profile_image),
+            404,
+        );
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = Storage::disk('public');
+        $path = $user->profile_image;
+
+        return response()->stream(
+            static function () use ($disk, $path): void {
+                $stream = $disk->readStream($path);
+
+                if ($stream !== false) {
+                    fpassthru($stream);
+                    fclose($stream);
+                }
+            },
+            200,
+            [
+                'Content-Type' => $disk->mimeType($path),
+                'Cache-Control' => 'public, max-age=3600',
+            ],
+        );
+    }
+
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $user = $request->user();
+        $path = $validated['avatar']->store(
+            'profile-images/'.$user->id,
+            'public',
+        );
+
+        if ($path === false) {
+            Log::error('Failed to store profile image.', ['user_id' => $user->id]);
+
+            return response()->json([
+                'message' => 'Foto profil gagal disimpan. Coba lagi.',
+            ], 500);
+        }
+
+        $previousPath = $user->profile_image;
+        $user->profile_image = $path;
+        if (! $user->save()) {
+            Storage::disk('public')->delete($path);
+
+            return response()->json([
+                'message' => 'Foto profil gagal disimpan. Coba lagi.',
+            ], 500);
+        }
+
+        if ($previousPath && ! Storage::disk('public')->delete($previousPath)) {
+            Log::warning('Failed to remove replaced profile image.', [
+                'user_id' => $user->id,
+                'path' => $previousPath,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Foto profil berhasil diperbarui.',
+            'data' => $user->fresh(),
+        ]);
+    }
+
     /**
      * GET /api/user
      * Kembalikan data user yang sedang login.
@@ -31,16 +106,16 @@ class AuthController extends Controller
         $user = $request->user();
 
         $validator = Validator::make($request->all(), [
-            'name'             => 'sometimes|required|string|max:255',
-            'email'            => 'sometimes|required|email|max:255|unique:users,email,' . $user->id,
+            'name' => 'sometimes|required|string|max:255',
+            'email' => 'sometimes|required|email|max:255|unique:users,email,'.$user->id,
             'current_password' => 'required_with:password|string',
-            'password'         => 'sometimes|required|string|min:8|confirmed',
+            'password' => 'sometimes|required|string|min:8|confirmed',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation failed',
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -49,7 +124,7 @@ class AuthController extends Controller
             if (! Hash::check($request->current_password, $user->password)) {
                 return response()->json([
                     'message' => 'Kata sandi saat ini salah.',
-                    'errors'  => [
+                    'errors' => [
                         'current_password' => ['Kata sandi saat ini salah.'],
                     ],
                 ], 422);
@@ -70,7 +145,7 @@ class AuthController extends Controller
         if (empty($data)) {
             return response()->json([
                 'message' => 'Tidak ada perubahan.',
-                'data'    => $user,
+                'data' => $user,
             ]);
         }
 
@@ -78,7 +153,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Profil diperbarui.',
-            'data'    => $user->fresh(),
+            'data' => $user->fresh(),
         ]);
     }
 
@@ -89,30 +164,30 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|max:255|unique:users,email',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation failed',
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
+            'name' => $request->name,
+            'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message'    => 'Register success',
-            'data'       => $user,
-            'token'      => $token,
+            'message' => 'Register success',
+            'data' => $user,
+            'token' => $token,
             'token_type' => 'Bearer',
         ], 201);
     }
@@ -124,14 +199,14 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation failed',
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -149,9 +224,9 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message'    => 'Login success',
-            'data'       => $user,
-            'token'      => $token,
+            'message' => 'Login success',
+            'data' => $user,
+            'token' => $token,
             'token_type' => 'Bearer',
         ]);
     }
