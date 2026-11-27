@@ -176,6 +176,194 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           const SizedBox(height: 24),
 
+                          Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFE8DE),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: const Icon(
+                                  Icons.auto_awesome_rounded,
+                                  color: Color(0xFFD87A59),
+                                  size: 21,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'IDENTITAS PENGEMBANG',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: const Color(0xFFB8874E),
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Dibuat oleh',
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFFFFF1E8), Colors.white],
+                              ),
+                              border: Border.all(color: Colors.white, width: 2),
+                              borderRadius: BorderRadius.circular(26),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFD87A59)
+                                      .withValues(alpha: 0.1),
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFFD87A59)
+                                                .withValues(alpha: 0.16),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ClipOval(
+                                        child: Image.network(
+                                          'https://www.radiedtya.web.id/_next/image?url=%2Fimages%2Fhero-sec%2Fme.jpeg&w=384&q=75',
+                                          width: 76,
+                                          height: 76,
+                                          fit: BoxFit.cover,
+                                          semanticLabel:
+                                              'Foto Muhammad Radiedtya Pratama',
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                                    width: 76,
+                                                    height: 76,
+                                                    color: const Color(
+                                                      0xFFFFF0EB,
+                                                    ),
+                                                    child: const Icon(
+                                                      Icons.person_rounded,
+                                                      size: 38,
+                                                      color: Color(0xFFD87A59),
+                                                    ),
+                                                  ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Muhammad Radiedtya Pratama',
+                                            style: theme.textTheme.titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Wrap(
+                                            spacing: 7,
+                                            runSpacing: 7,
+                                            children: [
+                                              const _CreatorTag(
+                                                icon: Icons.school_rounded,
+                                                label: 'XII RPL 1',
+                                              ),
+                                              const _CreatorTag(
+                                                icon: Icons.badge_rounded,
+                                                label: 'Absen 15',
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 18),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: const Color(0xFFD87A59)
+                                          .withValues(alpha: 0.12),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.link_rounded,
+                                            size: 17,
+                                            color: Color(0xFFD87A59),
+                                          ),
+                                          const SizedBox(width: 7),
+                                          Text(
+                                            'URL Public API',
+                                            style: theme.textTheme.labelMedium
+                                                ?.copyWith(
+                                                  color: const Color(
+                                                    0xFF8A6653,
+                                                  ),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 7),
+                                      const SelectableText(
+                                        'https://dummyjson.com/posts',
+                                        style: TextStyle(
+                                          color: Color(0xFF654C3D),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
                           // ==== Aksi ====
                           SizedBox(
                             width: double.infinity,
@@ -212,6 +400,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CreatorTag extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _CreatorTag({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFFB8874E)),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF765A47),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

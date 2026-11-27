@@ -15,6 +15,8 @@ class AppRouting {
   static const String login = '/login';
   static const String register = '/register';
   static const String home = '/home';
+  static const String bookmarks = '/bookmarks';
+  static const String profile = '/profile';
   static const String editProfile = '/profile-edit';
   static const String detail = '/detail';
   static const String bookmarkDetail = '/bookmark-detail';
@@ -62,6 +64,12 @@ class AppRouting {
 
       case home:
         return _buildRoute(settings, const HomeScreen());
+
+      case bookmarks:
+        return _buildRoute(settings, const HomeScreen(initialIndex: 1));
+
+      case profile:
+        return _buildRoute(settings, const HomeScreen(initialIndex: 2));
 
       case detail:
         final id = settings.arguments as int;

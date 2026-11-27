@@ -33,7 +33,7 @@ class CustomBottomNav extends StatelessWidget {
     ];
 
     return Container(
-      margin: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 18),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.6),
         borderRadius: BorderRadius.circular(40),
@@ -50,22 +50,20 @@ class CustomBottomNav extends StatelessWidget {
         borderRadius: BorderRadius.circular(40),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), // Efek kaca
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(items.length, (index) {
-                final isActive = currentIndex == index;
-                return _NavBarItem(
+          child: Row(
+            children: List.generate(items.length, (index) {
+              final isActive = currentIndex == index;
+              return Expanded(
+                child: _NavBarItem(
                   icon: isActive
                       ? items[index]['activeIcon'] as IconData
                       : items[index]['icon'] as IconData,
                   label: items[index]['label'] as String,
                   isActive: isActive,
                   onTap: () => onTap(index),
-                );
-              }),
-            ),
+                ),
+              );
+            }),
           ),
         ),
       ),
@@ -94,7 +92,9 @@ class _NavBarItem extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        width: double.infinity,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFF1E1E1E) : Colors.transparent,
           borderRadius: BorderRadius.circular(30),
@@ -104,7 +104,7 @@ class _NavBarItem extends StatelessWidget {
             Icon(
               icon,
               color: isActive ? Colors.white : Colors.black54,
-              size: 24,
+              size: 22,
             ),
             // Animasi teks saat menu aktif
             AnimatedSize(
@@ -113,13 +113,13 @@ class _NavBarItem extends StatelessWidget {
               child: isActive
                   ? Row(
                       children: [
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Text(
                           label,
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontSize: 13,
                           ),
                         ),
                       ],
