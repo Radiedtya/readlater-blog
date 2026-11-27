@@ -20,45 +20,71 @@ class AppRouting {
   static const String bookmarkDetail = '/bookmark-detail';
   static const String bookmarkForm = '/bookmark-form';
 
+  static Route<dynamic> _buildRoute(RouteSettings settings, Widget page) {
+    return PageRouteBuilder<void>(
+      settings: settings,
+      transitionDuration: const Duration(milliseconds: 380),
+      reverseTransitionDuration: const Duration(milliseconds: 280),
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.018),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:
-        return MaterialPageRoute(builder: (_) => const SplashScreen());
+        return _buildRoute(settings, const SplashScreen());
 
       case login:
-        return MaterialPageRoute(builder: (_) => const LoginScreen());
+        return _buildRoute(settings, const LoginScreen());
 
       case register:
-        return MaterialPageRoute(builder: (_) => const RegisterScreen());
+        return _buildRoute(settings, const RegisterScreen());
 
       case editProfile:
-        return MaterialPageRoute(builder: (_) => const EditProfileScreen());
+        return _buildRoute(settings, const EditProfileScreen());
 
       case home:
-        return MaterialPageRoute(builder: (_) => const HomeScreen());
+        return _buildRoute(settings, const HomeScreen());
 
       case detail:
         final id = settings.arguments as int;
-        return MaterialPageRoute(builder: (_) => DetailScreen(postId: id));
+        return _buildRoute(settings, DetailScreen(postId: id));
 
       case bookmarkDetail:
         final bookmark = settings.arguments as Bookmark;
-        return MaterialPageRoute(
-          builder: (_) => BookmarkDetailScreen(bookmark: bookmark),
-        );
+        return _buildRoute(settings, BookmarkDetailScreen(bookmark: bookmark));
 
       case bookmarkForm:
         final args = settings.arguments as Map<String, dynamic>;
-        return MaterialPageRoute(
-          builder: (_) => BookmarkFormScreen(
+        return _buildRoute(
+          settings,
+          BookmarkFormScreen(
             existing: args['bookmark'] as Bookmark?,
             preselectedTopicId: args['preselectedTopicId'] as int?,
           ),
         );
 
       default:
-        return MaterialPageRoute(
-          builder: (_) => Scaffold(
+        return _buildRoute(
+          settings,
+          Scaffold(
             appBar: AppBar(title: const Text('Halaman tidak ditemukan')),
             body: const Center(child: Text('Route tidak dikenali.')),
           ),

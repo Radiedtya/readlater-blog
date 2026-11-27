@@ -7,6 +7,7 @@ import '../models/public_post.dart';
 import '../routes/app_routing.dart';
 import '../services/public_api_service.dart';
 import '../widgets/editorial_visuals.dart';
+import '../widgets/reading_loader.dart';
 import '../widgets/search_field.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -133,34 +134,45 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   backgroundColor: Colors.transparent,
                 ),
               ],
-              if (_loading && _posts == null)
-                const Padding(
-                  padding: EdgeInsets.only(top: 48),
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              else if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 48),
-                  child: Center(child: Text('Gagal memuat: $_error')),
-                )
-              else if (posts.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 48),
-                  child: Center(
-                    child: Text(
-                      _query.isEmpty
-                          ? 'Belum ada artikel.'
-                          : 'Tidak ada hasil untuk "$_query".',
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-                  ),
-                )
-              else ...[
-                const SizedBox(height: 24),
-                ...posts.map((post) => _SoftPostCard(post: post)),
-              ],
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 320),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: _loading && _posts == null
+                    ? const Padding(
+                        key: ValueKey('explore-loading'),
+                        padding: EdgeInsets.only(top: 48, bottom: 32),
+                        child: ReadingLoader(label: 'Memuat bacaan...'),
+                      )
+                    : _error != null
+                    ? Padding(
+                        key: const ValueKey('explore-error'),
+                        padding: const EdgeInsets.only(top: 48),
+                        child: Center(child: Text('Gagal memuat: $_error')),
+                      )
+                    : posts.isEmpty
+                    ? Padding(
+                        key: const ValueKey('explore-empty'),
+                        padding: const EdgeInsets.only(top: 48),
+                        child: Center(
+                          child: Text(
+                            _query.isEmpty
+                                ? 'Belum ada artikel.'
+                                : 'Tidak ada hasil untuk "$_query".',
+                            style: const TextStyle(color: Colors.black54),
+                          ),
+                        ),
+                      )
+                    : Padding(
+                        key: const ValueKey('explore-posts'),
+                        padding: const EdgeInsets.only(top: 24),
+                        child: Column(
+                          children: posts
+                              .map((post) => _SoftPostCard(post: post))
+                              .toList(),
+                        ),
+                      ),
+              ),
             ],
           ),
         ),

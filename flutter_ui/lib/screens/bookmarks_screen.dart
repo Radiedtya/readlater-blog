@@ -8,6 +8,7 @@ import '../routes/app_routing.dart';
 import '../services/crud_service.dart';
 import '../state/bookmark_events.dart';
 import '../widgets/editorial_visuals.dart';
+import '../widgets/reading_loader.dart';
 import '../widgets/search_field.dart';
 
 class BookmarksScreen extends StatefulWidget {
@@ -228,9 +229,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
               if (_loading && _bookmarks == null)
                 const SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                  child: ReadingLoader(label: 'Memuat bookmark...'),
                 )
               else if (_error != null)
                 SliverFillRemaining(

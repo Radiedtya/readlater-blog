@@ -8,6 +8,7 @@ import '../services/public_api_service.dart';
 import '../state/bookmark_events.dart';
 import '../widgets/app_brand.dart';
 import '../widgets/editorial_visuals.dart';
+import '../widgets/reading_loader.dart';
 
 class DetailScreen extends StatefulWidget {
   final int postId;
@@ -109,107 +110,127 @@ class _DetailScreenState extends State<DetailScreen> {
           FutureBuilder<PublicPostDetail>(
             future: _future,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                );
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text('Gagal memuat: ${snapshot.error}'),
+              return AnimatedSwitcher(
+                duration: const Duration(milliseconds: 320),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: Builder(
+                  key: ValueKey(
+                    snapshot.connectionState == ConnectionState.waiting
+                        ? 'article-loading'
+                        : snapshot.hasError
+                        ? 'article-error'
+                        : 'article-content',
                   ),
-                );
-              }
-              final post = snapshot.data!;
-              return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const ReadingHero(
-                      eyebrow: 'Bacaan komunitas',
-                      title: 'Satu cerita, banyak sudut pandang',
-                      description: 'Luangkan waktu untuk membaca dan menemukan ide.',
-                      icon: Icons.auto_stories_outlined,
-                      accent: Color(0xFF6385B7),
-                      compact: true,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      post.title,
-                      style: theme.textTheme.displaySmall?.copyWith(
-                        fontSize: 30,
-                        height: 1.25,
-                      ),
-                    ),
-                    if (post.tags.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: post.tags
-                            .map(
-                              (tag) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFF0EB),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  tag,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: const Color(0xFFD87A59),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                  builder: (context) {
+                    final isLoading =
+                        snapshot.connectionState == ConnectionState.waiting;
+                    if (isLoading) {
+                      return const ReadingLoader(label: 'Memuat artikel...');
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text('Gagal memuat: ${snapshot.error}'),
+                        ),
+                      );
+                    }
+                    final post = snapshot.data!;
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const ReadingHero(
+                            eyebrow: 'Bacaan komunitas',
+                            title: 'Satu cerita, banyak sudut pandang',
+                            description: 'Luangkan waktu untuk membaca dan menemukan ide.',
+                            icon: Icons.auto_stories_outlined,
+                            accent: Color(0xFF6385B7),
+                            compact: true,
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            post.title,
+                            style: theme.textTheme.displaySmall?.copyWith(
+                              fontSize: 30,
+                              height: 1.25,
+                            ),
+                          ),
+                          if (post.tags.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: post.tags
+                                  .map(
+                                    (tag) => Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFF0EB),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        tag,
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: const Color(0xFFD87A59),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              _Meta(
+                                icon: Icons.visibility_outlined,
+                                label: '${post.views}',
                               ),
-                            )
-                            .toList(),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        _Meta(
-                          icon: Icons.visibility_outlined,
-                          label: '${post.views}',
-                        ),
-                        const SizedBox(width: 16),
-                        _Meta(
-                          icon: Icons.favorite_border,
-                          label: '${post.likes}',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
+                              const SizedBox(width: 16),
+                              _Meta(
+                                icon: Icons.favorite_border,
+                                label: '${post.likes}',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              post.body,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                height: 1.7,
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                      child: Text(
-                        post.body,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          height: 1.7,
-                        ),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               );
             },
@@ -404,9 +425,7 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
           child: _loading
               ? const Padding(
                   padding: EdgeInsets.all(40),
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                  child: ReadingLoader(label: 'Memuat topik...'),
                 )
               : Column(
                   mainAxisSize: MainAxisSize.min,
@@ -455,8 +474,7 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                               const ReadingHero(
                                 eyebrow: 'Tambahkan ke koleksi',
                                 title: 'Simpan bacaan ini',
-                                description:
-                                    'Tulis ringkasan dan poin yang ingin diingat.',
+                                description: 'Tulis ringkasan dan poin yang ingin diingat.',
                                 icon: Icons.bookmark_add_outlined,
                                 accent: Color(0xFF648D72),
                                 compact: true,

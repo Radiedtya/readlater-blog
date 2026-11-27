@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_brand.dart';
 import '../widgets/editorial_visuals.dart';
+import '../widgets/reading_loader.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -120,210 +121,222 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Positioned.fill(
             child: const EditorialBackdrop(palette: EditorialPalette.account),
           ),
-          if (_loading)
-            const Center(child: CircularProgressIndicator(strokeWidth: 2))
-          else
-            SafeArea(
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white, width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    children: [
-                      const ReadingHero(
-                        eyebrow: 'Akun pembaca',
-                        title: 'Sesuaikan profilmu',
-                        description:
-                            'Perbarui informasi akun dan jaga keamanan kata sandi.',
-                        icon: Icons.manage_accounts_outlined,
-                        accent: Color(0xFF8173AE),
-                        compact: true,
-                      ),
-                      const SizedBox(height: 24),
-                      // ===== Section: Data profil =====
-                      _SectionHeader(label: 'DATA PROFIL'),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _nameController,
-                        textInputAction: TextInputAction.next,
-                        enabled: !_saving,
-                        decoration: const InputDecoration(
-                          labelText: 'Nama lengkap',
-                          prefixIcon: Icon(Icons.person_outline),
-                        ),
-                        validator: (v) {
-                          final value = (v ?? '').trim();
-                          if (value.isEmpty) return 'Nama wajib diisi';
-                          if (value.length > 255) return 'Nama terlalu panjang';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        enabled: !_saving,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: Icon(Icons.alternate_email),
-                        ),
-                        validator: (v) {
-                          final value = (v ?? '').trim();
-                          if (value.isEmpty) return 'Email wajib diisi';
-                          final regex = RegExp(
-                            r'^[\w\.\-+]+@[\w\-]+(\.[\w\-]+)+$',
-                          );
-                          if (!regex.hasMatch(value)) {
-                            return 'Format email tidak valid';
-                          }
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // ===== Section: Ubah kata sandi =====
-                      _SectionHeader(label: 'UBAH KATA SANDI (OPSIONAL)'),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Biarkan kosong jika tidak ingin mengganti kata sandi.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _currentPasswordController,
-                        obscureText: _obscure,
-                        enabled: !_saving,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          labelText: 'Kata sandi saat ini',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscure
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
-                            onPressed: () =>
-                                setState(() => _obscure = !_obscure),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 320),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            child: _loading
+                ? const ReadingLoader(
+                    key: ValueKey('profile-loading'),
+                    label: 'Memuat profil...',
+                  )
+                : SafeArea(
+                    key: const ValueKey('profile-form'),
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
                           ),
-                        ),
-                        validator: (v) {
-                          if (!_wantsPasswordChange) return null;
-                          if ((v ?? '').isEmpty) {
-                            return 'Kata sandi saat ini wajib diisi';
-                          }
-                          return null;
-                        },
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _newPasswordController,
-                        obscureText: _obscure,
-                        enabled: !_saving,
-                        onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          labelText: 'Kata sandi baru',
-                          prefixIcon: Icon(Icons.lock_outline),
-                        ),
-                        validator: (v) {
-                          if (!_wantsPasswordChange) return null;
-                          final value = v ?? '';
-                          if (value.isEmpty)
-                            return 'Kata sandi baru wajib diisi';
-                          if (value.length < 8) return 'Minimal 8 karakter';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _confirmPasswordController,
-                        obscureText: _obscure,
-                        enabled: !_saving,
-                        onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          labelText: 'Konfirmasi kata sandi baru',
-                          prefixIcon: Icon(Icons.lock_outline),
-                        ),
-                        validator: (v) {
-                          if (!_wantsPasswordChange) return null;
-                          if ((v ?? '').isEmpty) {
-                            return 'Konfirmasi kata sandi wajib diisi';
-                          }
-                          if (v != _newPasswordController.text) {
-                            return 'Kata sandi tidak cocok';
-                          }
-                          return null;
-                        },
-                      ),
-
-                      // ===== Error =====
-                      if (_error != null) ...[
-                        const SizedBox(height: 20),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Form(
+                        key: _formKey,
+                        child: ListView(
+                          padding: EdgeInsets.zero,
                           children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 18,
-                              color: theme.colorScheme.error,
+                            const ReadingHero(
+                              eyebrow: 'Akun pembaca',
+                              title: 'Sesuaikan profilmu',
+                              description: 'Perbarui informasi akun dan jaga keamanan kata sandi.',
+                              icon: Icons.manage_accounts_outlined,
+                              accent: Color(0xFF8173AE),
+                              compact: true,
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.error,
+                            const SizedBox(height: 24),
+                            // ===== Section: Data profil =====
+                            _SectionHeader(label: 'DATA PROFIL'),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _nameController,
+                              textInputAction: TextInputAction.next,
+                              enabled: !_saving,
+                              decoration: const InputDecoration(
+                                labelText: 'Nama lengkap',
+                                prefixIcon: Icon(Icons.person_outline),
+                              ),
+                              validator: (v) {
+                                final value = (v ?? '').trim();
+                                if (value.isEmpty) return 'Nama wajib diisi';
+                                if (value.length > 255)
+                                  return 'Nama terlalu panjang';
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              enabled: !_saving,
+                              decoration: const InputDecoration(
+                                labelText: 'Email',
+                                prefixIcon: Icon(Icons.alternate_email),
+                              ),
+                              validator: (v) {
+                                final value = (v ?? '').trim();
+                                if (value.isEmpty) return 'Email wajib diisi';
+                                final regex = RegExp(
+                                  r'^[\w\.\-+]+@[\w\-]+(\.[\w\-]+)+$',
+                                );
+                                if (!regex.hasMatch(value)) {
+                                  return 'Format email tidak valid';
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            // ===== Section: Ubah kata sandi =====
+                            _SectionHeader(label: 'UBAH KATA SANDI (OPSIONAL)'),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Biarkan kosong jika tidak ingin mengganti kata sandi.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _currentPasswordController,
+                              obscureText: _obscure,
+                              enabled: !_saving,
+                              onChanged: (_) => setState(() {}),
+                              decoration: InputDecoration(
+                                labelText: 'Kata sandi saat ini',
+                                prefixIcon: const Icon(Icons.lock_outline),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscure
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                  ),
+                                  onPressed: () =>
+                                      setState(() => _obscure = !_obscure),
                                 ),
+                              ),
+                              validator: (v) {
+                                if (!_wantsPasswordChange) return null;
+                                if ((v ?? '').isEmpty) {
+                                  return 'Kata sandi saat ini wajib diisi';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _newPasswordController,
+                              obscureText: _obscure,
+                              enabled: !_saving,
+                              onChanged: (_) => setState(() {}),
+                              decoration: const InputDecoration(
+                                labelText: 'Kata sandi baru',
+                                prefixIcon: Icon(Icons.lock_outline),
+                              ),
+                              validator: (v) {
+                                if (!_wantsPasswordChange) return null;
+                                final value = v ?? '';
+                                if (value.isEmpty)
+                                  return 'Kata sandi baru wajib diisi';
+                                if (value.length < 8)
+                                  return 'Minimal 8 karakter';
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _confirmPasswordController,
+                              obscureText: _obscure,
+                              enabled: !_saving,
+                              onChanged: (_) => setState(() {}),
+                              decoration: const InputDecoration(
+                                labelText: 'Konfirmasi kata sandi baru',
+                                prefixIcon: Icon(Icons.lock_outline),
+                              ),
+                              validator: (v) {
+                                if (!_wantsPasswordChange) return null;
+                                if ((v ?? '').isEmpty) {
+                                  return 'Konfirmasi kata sandi wajib diisi';
+                                }
+                                if (v != _newPasswordController.text) {
+                                  return 'Kata sandi tidak cocok';
+                                }
+                                return null;
+                              },
+                            ),
+
+                            // ===== Error =====
+                            if (_error != null) ...[
+                              const SizedBox(height: 20),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: 18,
+                                    color: theme.colorScheme.error,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _error!,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme.colorScheme.error,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+
+                            const SizedBox(height: 32),
+
+                            // ===== Tombol simpan =====
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: _saving ? null : _save,
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                ),
+                                child: _saving
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text('Simpan perubahan'),
                               ),
                             ),
                           ],
                         ),
-                      ],
-
-                      const SizedBox(height: 32),
-
-                      // ===== Tombol simpan =====
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: _saving ? null : _save,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: _saving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Simpan perubahan'),
-                        ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
+          ),
         ],
       ),
     );

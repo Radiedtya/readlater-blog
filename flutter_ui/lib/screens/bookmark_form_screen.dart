@@ -6,6 +6,7 @@ import '../models/topic.dart';
 import '../services/crud_service.dart';
 import '../widgets/app_brand.dart';
 import '../widgets/editorial_visuals.dart';
+import '../widgets/reading_loader.dart';
 
 class BookmarkFormScreen extends StatefulWidget {
   final Bookmark? existing;
@@ -175,205 +176,222 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
               palette: EditorialPalette.bookmarkForm,
             ),
           ),
-          if (_loading)
-            const Center(child: CircularProgressIndicator(strokeWidth: 2))
-          else
-            SafeArea(
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white, width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    children: [
-                      ReadingHero(
-                        eyebrow: _isEdit ? 'Koleksi pribadi' : 'Catatan baru',
-                        title: _isEdit
-                            ? 'Perbarui catatanmu'
-                            : 'Simpan yang penting',
-                        description: 'Lengkapi detail artikel dan poin penting yang ingin disimpan.',
-                        icon: _isEdit
-                            ? Icons.edit_note_rounded
-                            : Icons.bookmark_add_outlined,
-                        accent: const Color(0xFFC17A4A),
-                        compact: true,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Topik
-                      DropdownButtonFormField<int>(
-                        value: _topicId,
-                        decoration: const InputDecoration(
-                          labelText: 'Topik',
-                          prefixIcon: Icon(Icons.sell_outlined),
-                        ),
-                        items: _topics
-                            .map(
-                              (t) => DropdownMenuItem(
-                                value: t.id,
-                                child: Text(t.name),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: _saving
-                            ? null
-                            : (v) => setState(() => _topicId = v),
-                        validator: (v) =>
-                            v == null ? 'Topik wajib dipilih' : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Judul
-                      TextFormField(
-                        controller: _titleController,
-                        textInputAction: TextInputAction.next,
-                        enabled: !_saving,
-                        decoration: const InputDecoration(
-                          labelText: 'Judul artikel',
-                          prefixIcon: Icon(Icons.title),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Judul wajib diisi'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Ringkasan
-                      TextFormField(
-                        controller: _summaryController,
-                        maxLines: 4,
-                        enabled: !_saving,
-                        decoration: const InputDecoration(
-                          labelText: 'Ringkasan',
-                          alignLabelWithHint: true,
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Ringkasan wajib diisi'
-                            : null,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Poin penting
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Poin penting',
-                              style: theme.textTheme.titleSmall,
-                            ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: _saving ? null : _addKeyPoint,
-                            icon: const Icon(Icons.add, size: 16),
-                            label: const Text('Tambah'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 320),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            child: _loading
+                ? const ReadingLoader(
+                    key: ValueKey('topics-loading'),
+                    label: 'Memuat topik...',
+                  )
+                : SafeArea(
+                    key: const ValueKey('bookmark-form'),
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      ..._keyPointControllers.asMap().entries.map((entry) {
-                        final i = entry.key;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: entry.value,
-                                  enabled: !_saving,
-                                  decoration: InputDecoration(
-                                    hintText: 'Poin ${i + 1}',
-                                    prefixIcon: const Icon(
-                                      Icons.circle,
-                                      size: 8,
+                      child: Form(
+                        key: _formKey,
+                        child: ListView(
+                          padding: EdgeInsets.zero,
+                          children: [
+                            ReadingHero(
+                              eyebrow: _isEdit
+                                  ? 'Koleksi pribadi'
+                                  : 'Catatan baru',
+                              title: _isEdit
+                                  ? 'Perbarui catatanmu'
+                                  : 'Simpan yang penting',
+                              description: 'Lengkapi detail artikel dan poin penting yang ingin disimpan.',
+                              icon: _isEdit
+                                  ? Icons.edit_note_rounded
+                                  : Icons.bookmark_add_outlined,
+                              accent: const Color(0xFFC17A4A),
+                              compact: true,
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Topik
+                            DropdownButtonFormField<int>(
+                              value: _topicId,
+                              decoration: const InputDecoration(
+                                labelText: 'Topik',
+                                prefixIcon: Icon(Icons.sell_outlined),
+                              ),
+                              items: _topics
+                                  .map(
+                                    (t) => DropdownMenuItem(
+                                      value: t.id,
+                                      child: Text(t.name),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: _saving
+                                  ? null
+                                  : (v) => setState(() => _topicId = v),
+                              validator: (v) =>
+                                  v == null ? 'Topik wajib dipilih' : null,
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Judul
+                            TextFormField(
+                              controller: _titleController,
+                              textInputAction: TextInputAction.next,
+                              enabled: !_saving,
+                              decoration: const InputDecoration(
+                                labelText: 'Judul artikel',
+                                prefixIcon: Icon(Icons.title),
+                              ),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? 'Judul wajib diisi'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Ringkasan
+                            TextFormField(
+                              controller: _summaryController,
+                              maxLines: 4,
+                              enabled: !_saving,
+                              decoration: const InputDecoration(
+                                labelText: 'Ringkasan',
+                                alignLabelWithHint: true,
+                              ),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? 'Ringkasan wajib diisi'
+                                  : null,
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Poin penting
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Poin penting',
+                                    style: theme.textTheme.titleSmall,
+                                  ),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: _saving ? null : _addKeyPoint,
+                                  icon: const Icon(Icons.add, size: 16),
+                                  label: const Text('Tambah'),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                onPressed:
-                                    (!_saving &&
-                                        _keyPointControllers.length > 1)
-                                    ? () => _removeKeyPoint(i)
-                                    : null,
-                                icon: const Icon(Icons.close, size: 18),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            ..._keyPointControllers.asMap().entries.map((
+                              entry,
+                            ) {
+                              final i = entry.key;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: entry.value,
+                                        enabled: !_saving,
+                                        decoration: InputDecoration(
+                                          hintText: 'Poin ${i + 1}',
+                                          prefixIcon: const Icon(
+                                            Icons.circle,
+                                            size: 8,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      onPressed:
+                                          (!_saving &&
+                                              _keyPointControllers.length > 1)
+                                          ? () => _removeKeyPoint(i)
+                                          : null,
+                                      icon: const Icon(Icons.close, size: 18),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+
+                            // Error inline
+                            if (_error != null) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: 18,
+                                    color: theme.colorScheme.error,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _error!,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme.colorScheme.error,
+                                          ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
-                          ),
-                        );
-                      }),
 
-                      // Error inline
-                      if (_error != null) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 18,
-                              color: theme.colorScheme.error,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.error,
+                            const SizedBox(height: 24),
+
+                            // Tombol simpan
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: _saving ? null : _save,
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                 ),
+                                child: _saving
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(
+                                        _isEdit ? 'Simpan perubahan' : 'Simpan',
+                                      ),
                               ),
                             ),
                           ],
                         ),
-                      ],
-
-                      const SizedBox(height: 24),
-
-                      // Tombol simpan
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: _saving ? null : _save,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: _saving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(_isEdit ? 'Simpan perubahan' : 'Simpan'),
-                        ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
+          ),
         ],
       ),
     );
