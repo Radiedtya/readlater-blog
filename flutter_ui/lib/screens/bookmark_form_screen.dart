@@ -5,6 +5,7 @@ import '../models/bookmark.dart';
 import '../models/topic.dart';
 import '../services/crud_service.dart';
 import '../widgets/app_brand.dart';
+import '../widgets/editorial_visuals.dart';
 
 class BookmarkFormScreen extends StatefulWidget {
   final Bookmark? existing;
@@ -170,18 +171,8 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFFFF0EB),
-                    Color(0xFFF3EFFF),
-                    Color(0xFFF7F6F2),
-                  ],
-                ),
-              ),
+            child: const EditorialBackdrop(
+              palette: EditorialPalette.bookmarkForm,
             ),
           ),
           if (_loading)
@@ -208,16 +199,17 @@ class _BookmarkFormScreenState extends State<BookmarkFormScreen> {
                   child: ListView(
                     padding: EdgeInsets.zero,
                     children: [
-                      Text(
-                        _isEdit ? 'Perbarui catatanmu' : 'Simpan yang penting',
-                        style: theme.textTheme.headlineMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Lengkapi detail artikel dan poin penting yang ingin disimpan.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.black54,
-                        ),
+                      ReadingHero(
+                        eyebrow: _isEdit ? 'Koleksi pribadi' : 'Catatan baru',
+                        title: _isEdit
+                            ? 'Perbarui catatanmu'
+                            : 'Simpan yang penting',
+                        description: 'Lengkapi detail artikel dan poin penting yang ingin disimpan.',
+                        icon: _isEdit
+                            ? Icons.edit_note_rounded
+                            : Icons.bookmark_add_outlined,
+                        accent: const Color(0xFFC17A4A),
+                        compact: true,
                       ),
                       const SizedBox(height: 24),
 

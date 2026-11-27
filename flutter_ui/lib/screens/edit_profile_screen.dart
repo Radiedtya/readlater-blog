@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../widgets/app_brand.dart';
+import '../widgets/editorial_visuals.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -117,19 +118,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFFFF0EB),
-                    Color(0xFFF3EFFF),
-                    Color(0xFFF7F6F2),
-                  ],
-                ),
-              ),
-            ),
+            child: const EditorialBackdrop(palette: EditorialPalette.account),
           ),
           if (_loading)
             const Center(child: CircularProgressIndicator(strokeWidth: 2))
@@ -155,16 +144,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: ListView(
                     padding: EdgeInsets.zero,
                     children: [
-                      Text(
-                        'Perbarui profil',
-                        style: theme.textTheme.headlineMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Kelola informasi akun dan kata sandi Anda.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.black54,
-                        ),
+                      const ReadingHero(
+                        eyebrow: 'Akun pembaca',
+                        title: 'Sesuaikan profilmu',
+                        description:
+                            'Perbarui informasi akun dan jaga keamanan kata sandi.',
+                        icon: Icons.manage_accounts_outlined,
+                        accent: Color(0xFF8173AE),
+                        compact: true,
                       ),
                       const SizedBox(height: 24),
                       // ===== Section: Data profil =====

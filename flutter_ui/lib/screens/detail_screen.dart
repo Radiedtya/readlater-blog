@@ -7,6 +7,7 @@ import '../services/crud_service.dart';
 import '../services/public_api_service.dart';
 import '../state/bookmark_events.dart';
 import '../widgets/app_brand.dart';
+import '../widgets/editorial_visuals.dart';
 
 class DetailScreen extends StatefulWidget {
   final int postId;
@@ -103,19 +104,7 @@ class _DetailScreenState extends State<DetailScreen> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFFFF0EB),
-                    Color(0xFFF3EFFF),
-                    Color(0xFFF7F6F2),
-                  ],
-                ),
-              ),
-            ),
+            child: const EditorialBackdrop(palette: EditorialPalette.article),
           ),
           FutureBuilder<PublicPostDetail>(
             future: _future,
@@ -139,6 +128,15 @@ class _DetailScreenState extends State<DetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const ReadingHero(
+                      eyebrow: 'Bacaan komunitas',
+                      title: 'Satu cerita, banyak sudut pandang',
+                      description: 'Luangkan waktu untuk membaca dan menemukan ide.',
+                      icon: Icons.auto_stories_outlined,
+                      accent: Color(0xFF6385B7),
+                      compact: true,
+                    ),
+                    const SizedBox(height: 24),
                     Text(
                       post.title,
                       style: theme.textTheme.displaySmall?.copyWith(
@@ -454,6 +452,16 @@ class _SaveBookmarkSheetState extends State<_SaveBookmarkSheet> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              const ReadingHero(
+                                eyebrow: 'Tambahkan ke koleksi',
+                                title: 'Simpan bacaan ini',
+                                description:
+                                    'Tulis ringkasan dan poin yang ingin diingat.',
+                                icon: Icons.bookmark_add_outlined,
+                                accent: Color(0xFF648D72),
+                                compact: true,
+                              ),
+                              const SizedBox(height: 20),
                               DropdownButtonFormField<int>(
                                 value: _topicId,
                                 decoration: const InputDecoration(

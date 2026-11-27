@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../routes/app_routing.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_brand.dart';
+import '../widgets/editorial_visuals.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -71,27 +72,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F6F2),
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // 1. Background Gradasi Atas
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: size.height * 0.35,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFEAF4FF), // Biru sangat soft
-                    Color(0xFFFFF0EB), // Peach soft
-                  ],
-                ),
-              ),
-            ),
+          const Positioned.fill(
+            child: EditorialBackdrop(palette: EditorialPalette.register),
           ),
 
           // 2. Logo di atas
@@ -157,7 +142,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 20),
+                        const ReadingHero(
+                          eyebrow: 'Mulai membaca',
+                          title: 'Bangun koleksimu',
+                          description:
+                              'Simpan ide menarik agar mudah ditemukan lagi.',
+                          icon: Icons.bookmark_add_outlined,
+                          accent: Color(0xFFD87A59),
+                          compact: true,
+                        ),
+                        const SizedBox(height: 24),
 
                         // Form Nama
                         _AuthTextField(

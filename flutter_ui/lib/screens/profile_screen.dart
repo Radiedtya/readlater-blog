@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../routes/app_routing.dart';
 import '../services/auth_service.dart';
+import '../widgets/editorial_visuals.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -92,6 +93,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
                 children: [
                   Text('Profil', style: theme.textTheme.displaySmall),
+                  const SizedBox(height: 18),
+                  const ReadingHero(
+                    eyebrow: 'Akun pembaca',
+                    title: 'Ruang pribadimu',
+                    description: 'Atur akun dan lanjutkan membaca dengan nyaman.',
+                    icon: Icons.person_outline_rounded,
+                    accent: Color(0xFFB8874E),
+                    compact: true,
+                  ),
                   const SizedBox(height: 24),
 
                   // ==== Kartu profil ====

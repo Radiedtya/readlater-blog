@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/public_post.dart';
 import '../routes/app_routing.dart';
 import '../services/public_api_service.dart';
+import '../widgets/editorial_visuals.dart';
 import '../widgets/search_field.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -106,6 +107,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: Colors.black54,
                 ),
+              ),
+              const SizedBox(height: 18),
+              const ReadingHero(
+                eyebrow: 'Jelajahi ide baru',
+                title: 'Bacaan yang menginspirasi',
+                description: 'Temukan cerita dan wawasan pilihan komunitas.',
+                icon: Icons.auto_stories_outlined,
+                accent: Color(0xFF4F8B77),
+                compact: true,
               ),
               const SizedBox(height: 20),
               SearchField(

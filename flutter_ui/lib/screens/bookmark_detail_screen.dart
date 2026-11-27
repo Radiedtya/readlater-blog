@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/bookmark.dart';
 import '../routes/app_routing.dart';
 import '../widgets/app_brand.dart';
+import '../widgets/editorial_visuals.dart';
 
 class BookmarkDetailScreen extends StatelessWidget {
   final Bookmark bookmark;
@@ -32,25 +33,22 @@ class BookmarkDetailScreen extends StatelessWidget {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFFFF0EB),
-                    Color(0xFFF3EFFF),
-                    Color(0xFFF7F6F2),
-                  ],
-                ),
-              ),
-            ),
+            child: const EditorialBackdrop(palette: EditorialPalette.saved),
           ),
           SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const ReadingHero(
+                  eyebrow: 'Koleksi pribadi',
+                  title: 'Bacaan yang kamu simpan',
+                  description: 'Ringkasan dan poin penting, siap dibaca kembali.',
+                  icon: Icons.bookmark_added_outlined,
+                  accent: Color(0xFF648D72),
+                  compact: true,
+                ),
+                const SizedBox(height: 20),
                 if (bookmark.topic != null) ...[
                   Container(
                     padding: const EdgeInsets.symmetric(

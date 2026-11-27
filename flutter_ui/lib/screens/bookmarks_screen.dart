@@ -7,6 +7,7 @@ import '../models/bookmark.dart';
 import '../routes/app_routing.dart';
 import '../services/crud_service.dart';
 import '../state/bookmark_events.dart';
+import '../widgets/editorial_visuals.dart';
 import '../widgets/search_field.dart';
 
 class BookmarksScreen extends StatefulWidget {
@@ -191,6 +192,16 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.black54,
                         ),
+                      ),
+                      const SizedBox(height: 18),
+                      const ReadingHero(
+                        eyebrow: 'Ruang bacaanmu',
+                        title: 'Simpan untuk nanti',
+                        description:
+                            'Semua catatan penting tersusun di satu tempat.',
+                        icon: Icons.bookmark_added_outlined,
+                        accent: Color(0xFF8270B2),
+                        compact: true,
                       ),
                       const SizedBox(height: 20),
                       SearchField(
