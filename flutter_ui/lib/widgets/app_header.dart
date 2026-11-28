@@ -138,6 +138,8 @@ class _AppHeaderState extends State<AppHeader> {
                 return PopupMenuButton<_ProfileMenuAction>(
                   tooltip: 'Menu akun',
                   onSelected: _onMenuSelected,
+                  position: PopupMenuPosition.under,
+                  offset: const Offset(0, 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),

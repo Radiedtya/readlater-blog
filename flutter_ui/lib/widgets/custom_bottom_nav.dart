@@ -18,26 +18,37 @@ class CustomBottomNav extends StatelessWidget {
       (icon: Icons.person_outline_rounded, label: 'Profil'),
     ];
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: const Color(0xFFEAE8E2))),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
       child: SafeArea(
         top: false,
-        child: Row(
-          children: List.generate(items.length, (index) {
-            final isActive = currentIndex == index;
-            return Expanded(
-              child: _NavBarItem(
-                icon: items[index].icon,
-                label: items[index].label,
-                isActive: isActive,
-                onTap: () => onTap(index),
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE8EAF0)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF24334A).withValues(alpha: 0.08),
+                blurRadius: 18,
+                offset: const Offset(0, 5),
               ),
-            );
-          }),
+            ],
+          ),
+          child: Row(
+            children: List.generate(items.length, (index) {
+              final isActive = currentIndex == index;
+              return Expanded(
+                child: _NavBarItem(
+                  icon: items[index].icon,
+                  label: items[index].label,
+                  isActive: isActive,
+                  onTap: () => onTap(index),
+                ),
+              );
+            }),
+          ),
         ),
       ),
     );
@@ -59,40 +70,43 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        height: 48,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFF1EFE9) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isActive
-                  ? const Color(0xFF292821)
-                  : const Color(0xFF858178),
-              size: 20,
-            ),
-            const SizedBox(width: 7),
-            Text(
-              label,
-              style: TextStyle(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          height: 58,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isActive ? const Color(0xFFEAF1FF) : Colors.transparent,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
                 color: isActive
-                    ? const Color(0xFF292821)
-                    : const Color(0xFF858178),
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                fontSize: 12,
+                    ? const Color(0xFF315C87)
+                    : const Color(0xFF858A92),
+                size: 20,
               ),
-            ),
-          ],
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isActive
+                      ? const Color(0xFF284B70)
+                      : const Color(0xFF777D85),
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

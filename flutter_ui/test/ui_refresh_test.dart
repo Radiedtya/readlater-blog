@@ -29,12 +29,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Menu akun'));
+    final profileButton = find.byTooltip('Menu akun');
+    final profileButtonRect = tester.getRect(profileButton);
+    await tester.tap(profileButton);
     await tester.pumpAndSettle();
 
     expect(find.text('Pengguna'), findsOneWidget);
     expect(find.text('Profil'), findsOneWidget);
     expect(find.text('Keluar'), findsOneWidget);
+    expect(
+      tester.getRect(find.text('Pengguna')).top,
+      greaterThanOrEqualTo(profileButtonRect.bottom),
+    );
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

@@ -42,16 +42,25 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F6F2),
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            const AppHeader(),
-            Expanded(
-              child: IndexedStack(index: _index, children: _pages),
-            ),
-          ],
+      backgroundColor: Colors.transparent,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFFFFF), Color(0xFFF3F8FF), Color(0xFFFFF7EF)],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              const AppHeader(),
+              Expanded(
+                child: IndexedStack(index: _index, children: _pages),
+              ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: CustomBottomNav(
